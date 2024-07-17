@@ -1,0 +1,8 @@
+【jsoncpp_ex.h】 - JSON扩展操作库
+直接引用json_ex.h即可，其中包含了该库的所有头文件。
+该静态库已经内置了原版的jsoncpp，无需再次引用jsoncpp的静态库。
+该库是基于jsoncpp推展出了一些方便的封装函数。
+
+
+【jsoncpp_ex.h】 - 具有扩展功能的jsoncpp
+json_toString - 把json的value对象转换为UTF8编码的string对象
