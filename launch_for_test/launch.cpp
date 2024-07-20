@@ -10,21 +10,21 @@
 using namespace std;
 using namespace ytpp;
 
+
 int main() {
 	Json::Value root;
-	string aa = "にほんご";
-	cout << aa << endl;
-	//中文 ほんご 한국어
-	string str = u8"中文 ほんご 한국어";
-
-	root[u8"test"] = str;
-	root[u8"test2"] = str;
-	root[u8"test3"] = str;
+	string js = u8"{\"name\":\"ytpp 韩文：한국어\",\"age\":18}";
 	
-	string rst = json_toString( root, false );
-	cout << rst << endl;
+	if ( !json_fromString( js, root ) ) {
+		cout << "json_fromString error" << endl;
+	} else {
+		root["num"] = 123;
+		cout << "json_fromString success" << endl;
+		cout << root["num"].asString() << endl;
+	}
 
-	write_to_file( _T( "test.json" ), rst.c_str() );
+
+	write_to_file( _T( "test.txt" ), root["name"].asCString() );
 	
 	
 	system( "pause" );
