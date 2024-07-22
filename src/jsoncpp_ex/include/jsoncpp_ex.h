@@ -22,7 +22,8 @@ namespace ytpp {
 	*/
 	string json_toString( 
 		_In_ const Json::Value& value, 
-		_In_ bool format );
+		_In_ bool format 
+	);
 	/*
 	* @brief 【高级版本】将json的value对象转换为可选UTF8编码的字符串，并指定所有可选参数
 	* @param [in] value: 要转换的json对象
@@ -45,7 +46,8 @@ namespace ytpp {
 		_In_ bool useSpecialFloats = false,
 		_In_ int precision = 5,
 		_In_ string precisionType = "significant",
-		_In_ bool emitUTF8 = false);
+		_In_ bool emitUTF8 = false
+	);
 
 	/*
 	* @brief 将UTF8编码的字符串转换为json的value对象，默认收集注释
@@ -56,7 +58,8 @@ namespace ytpp {
 	*/
 	bool json_fromString( 
 		_In_ const string& jsonStr, 
-		_Out_ Json::Value& value );
+		_Out_ Json::Value& value 
+	);
 
 	/*
 	* @brief 将UTF8编码的字符串转换为json的value对象，并指定是否收集注释
@@ -68,7 +71,8 @@ namespace ytpp {
 	bool json_fromString( 
 		_In_ const string& jsonStr,
         _Out_ Json::Value& value,
-		_In_ bool collectComments );
+		_In_ bool collectComments 
+	);
 
 	/*
 	* @brief 【高级版本】将UTF8编码的字符串转换为json的value对象，并指定所有可选参数
@@ -105,7 +109,8 @@ namespace ytpp {
 		_In_ bool failIfExtra = false,
 		_In_ bool rejectDupKeys = false,
 		_In_ bool allowSpecialFloats = true,
-		_In_ bool skipBom = true );
+		_In_ bool skipBom = true 
+	);
 }
 
 

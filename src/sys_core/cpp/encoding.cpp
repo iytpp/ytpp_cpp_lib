@@ -42,7 +42,7 @@ namespace ytpp {
 		return rtn;
 	}
 
-	std::wstring encoding_ANSIstring_to_Widestring( _In_ const string& str )
+	std::wstring encoding_ANSI_to_wstring( _In_ const string& str )
 	{
 		wstring rtn;
 
@@ -56,7 +56,7 @@ namespace ytpp {
 		return rtn;
 	}
 
-	std::string encoding_Widestring_to_ANSIstring( _In_ const wstring& str )
+	std::string encoding_wstring_to_ANSI( _In_ const wstring& str )
 	{
 		string rtn;
 
@@ -70,7 +70,7 @@ namespace ytpp {
 		return rtn;
 	}
 
-	std::wstring encoding_UTF8string_to_Widestring( _In_ const string& str )
+	std::wstring encoding_UTF8_to_wstring( _In_ const string& str )
 	{
 		wstring rtn;
 
@@ -85,7 +85,7 @@ namespace ytpp {
 		return rtn;
 	}
 
-	std::string encoding_Widestring_to_UTF8string( _In_ const wstring& str )
+	std::string encoding_wstring_to_UTF8( _In_ const wstring& str )
 	{
 		string rtn;
 

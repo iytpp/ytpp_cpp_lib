@@ -155,6 +155,8 @@
   <ItemGroup>
     <ClCompile Include="..\src\sys_core\cpp\disk_manipulation.cpp" />
     <ClCompile Include="..\src\sys_core\cpp\encoding.cpp" />
+    <ClCompile Include="..\src\sys_core\cpp\sys_processing.cpp" />
+    <ClInclude Include="..\src\sys_core\include\sys_processing.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

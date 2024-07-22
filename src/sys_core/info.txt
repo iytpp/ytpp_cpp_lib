@@ -1,8 +1,0 @@
-【sys_core.h】 - 核心库
-直接引用sys_core.h即可，其中包含了该库的所有头文件
-
-
-
-【disk_manipulation.h】 - 磁盘操作
-file_is_exists - 文件是否存在
-write_to_file - 写到文件

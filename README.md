@@ -10,7 +10,7 @@
 
  **关于源文件路径的环境变量** 
 
-​	在任何Windows电脑上编译项目之前，需要配置源代码文件所在根目录的环境变量。创建一个名为 `YTPP_CPP_LIB` 的环境变量，值为解决方案的根目录（即 `ytpp_cpp_lib.sln` 文件所在的路径），路径尾部不带反斜杠。  
+​	在任何Windows电脑上编译项目之前，需要配置源代码文件所在根目录的环境变量。创建一个名为 `YTPP_CPP_LIB` 的**系统环境变量**，值为解决方案的根目录（即 `ytpp_cpp_lib.sln` 文件所在的路径），路径尾部不带反斜杠。  
 
 
 
@@ -18,14 +18,14 @@
 
  **开发各个库的时候需要引入的include文件夹** 
 
-1. &#36;(YTPP_CPP_LIB)&#92;src&#92;&#46;private&#92;include
-2. &#36;(YTPP_CPP_LIB)&#92;src&#92;&#46;common&#92;include
-3. 各个库自己的include文件夹，例如：&#36;(YTPP_CPP_LIB)&#92;src&#92;xxxxxx&#92;include
+1. `$(YTPP_CPP_LIB)\src\.private\include`
+2. `$(YTPP_CPP_LIB)\src\.common\include`
+3. `各个库自己的include文件夹，例如：$(YTPP_CPP_LIB)\src\xxxxxx\include`
 
  **使用各个库的时候需要引入的include文件夹** 
 
-1. &#36;(YTPP_CPP_LIB)&#92;src&#92;&#46;common&#92;include
-2. 各个库文件夹中的include文件夹，例如：&#36;(YTPP_CPP_LIB)&#92;src&#92;xxxxxx&#92;include
+1. `$(YTPP_CPP_LIB)\src\.common\include`
+2. `各个库自己的include文件夹，例如：$(YTPP_CPP_LIB)\src\xxxxxx\include`
 
 ### 参与贡献
 
