@@ -13,17 +13,14 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="静态库">
-      <UniqueIdentifier>{f2ee5e17-36d9-46bd-bbc6-95032f8d85d4}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="launch.cpp">
+    <ClCompile Include="..\..\src\jsoncpp_ex\cpp\jsoncpp_ex.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="launch.h">
+    <ClInclude Include="..\..\src\jsoncpp_ex\include\jsoncpp_ex.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

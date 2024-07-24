@@ -21,30 +21,30 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\BaiduSyncdisk\ytpp_cpp_lib\src\.common\include\compatibility.h">
+    <ClInclude Include="..\..\src\.common\include\compatibility.h">
       <Filter>common</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\sys_core\include\disk_manipulation.h">
+    <ClInclude Include="..\..\src\sys_core\include\disk_manipulation.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\sys_core\include\sys_core.h">
+    <ClInclude Include="..\..\src\sys_core\include\encoding.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\sys_core\include\encoding.h">
+    <ClInclude Include="..\..\src\sys_core\include\sys_core.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\sys_core\include\sys_processing.h">
+    <ClInclude Include="..\..\src\sys_core\include\sys_processing.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\sys_core\cpp\disk_manipulation.cpp">
+    <ClCompile Include="..\..\src\sys_core\cpp\disk_manipulation.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\sys_core\cpp\encoding.cpp">
+    <ClCompile Include="..\..\src\sys_core\cpp\encoding.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\sys_core\cpp\sys_processing.cpp">
+    <ClCompile Include="..\..\src\sys_core\cpp\sys_processing.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

@@ -67,10 +67,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\jsoncpp_ex\include\jsoncpp_ex.h" />
+    <ClCompile Include="..\..\src\jsoncpp_ex\cpp\jsoncpp_ex.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\jsoncpp_ex\cpp\jsoncpp_ex.cpp" />
+    <ClInclude Include="..\..\src\jsoncpp_ex\include\jsoncpp_ex.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
