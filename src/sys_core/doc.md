@@ -16,6 +16,65 @@
 //所属头文件
 #include "sys_processing.h"
 ```
+### 
+
+### get_cursorPos [X | Y] 与 set_cursorPos [Orig]
+```C++
+/*
+* @brief 设置光标位置
+* @param [in] x: 水平位置
+* @param [in] y: 垂直位置
+* @return (bool) 是否设置成功
+*/
+bool set_cursorPosOrig(int x, int y);
+
+/*
+* @brief 设置光标位置，两个参数可选择性填写，如果为NULL则不修改对应的测度
+* @brief 由于设置前会获取原鼠标的位置，所以性能方面会有损耗，如果不希望自动获取原位置，可使用set_cursorPosOrig或直接调用系统API：SetCursorPos
+* @param [in] x: 水平位置
+* @param [in] y: 垂直位置
+* @return (bool) 是否设置成功
+*/
+bool set_cursorPos(int x, int y);
+
+/*
+* @brief 获取光标位置
+* @param [out] x: 水平位置
+* @param [out] y: 垂直位置
+* @return (bool) 是否获取成功
+*/
+bool get_cursorPos(int* x, int* y);
+
+/*
+* @brief 获取光标的垂直位置
+* @return (int) 光标垂直位置，如果获取失败则返回 -1
+*/
+int get_cursorPosY();
+
+/*
+* @brief 获取光标的水平位置
+* @return (int) 光标水平位置，如果获取失败则返回 -1
+*/
+int get_cursorPosX();
+```
+
+### get_screenWidth 与 get_screenHeight
+```C++
+/*
+* @brief 获取屏幕宽度
+* @return (int) 屏幕宽度
+*/
+int get_screenWidth();
+
+/*
+* @brief 获取屏幕高度
+* @return (int) 屏幕高度
+*/
+int get_screenHeight();
+```
+
+`2024年7月26日`
+
 ### write_profile 和 read_profile
 ```C++
 	/*
