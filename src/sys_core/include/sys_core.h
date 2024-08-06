@@ -5,7 +5,7 @@
 #define _SYS_CORE_H_
 
 //兼容性文件，用于兼容 MultiByte 和 WideChar
-#include "compatibility.h"
+//#include "compatibility.h"
 
 //磁盘操作
 #include "disk_manipulation.h"

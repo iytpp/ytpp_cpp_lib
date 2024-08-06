@@ -3,8 +3,10 @@
 jsoncpp_ex是基于jsoncpp扩展出来的库，继承jsoncpp所有功能的同时又新增了一些方便的封装函数。例如利用 `json_toString` 函数可以直接把json的value对象转换为UTF8编码的string对象。
 
 ## 头文件
-`jsoncpp_ex.h`
-
+```C++
+#include "jsoncpp_ex.h"
+using namespace ytpp::json;
+```
 ## 函数参考
 
 ### json_toString 与 json_toStringEx - JSON到文本

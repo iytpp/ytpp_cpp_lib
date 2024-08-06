@@ -148,6 +148,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\.common\include\compatibility.h" />
+    <ClInclude Include="..\..\src\.private\include\debug_tools.h" />
     <ClInclude Include="..\..\src\sys_core\include\disk_manipulation.h" />
     <ClInclude Include="..\..\src\sys_core\include\encoding.h" />
     <ClInclude Include="..\..\src\sys_core\include\sys_core.h" />

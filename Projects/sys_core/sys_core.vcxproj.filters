@@ -36,6 +36,9 @@
     <ClInclude Include="..\..\src\sys_core\include\sys_processing.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\.private\include\debug_tools.h">
+      <Filter>private</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\sys_core\cpp\disk_manipulation.cpp">

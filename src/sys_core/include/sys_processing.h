@@ -3,7 +3,6 @@
 
 #include <windows.h>
 #include <string>
-#include "compatibility.h"
 
 #ifdef _UNICODE
 
@@ -85,7 +84,7 @@ namespace ytpp {
 		*/
 		int get_screenHeight();
 
-		/* 2024年7月26日 */
+		/* 2024年7月26日↑ */
 
 		/*
 		* @brief 写配置项，支持ANSI和UTF8
