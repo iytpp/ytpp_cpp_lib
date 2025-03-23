@@ -12,14 +12,29 @@ namespace ytpp {
 		class HttpCookiesWrapper {
 		public:
 			HttpCookiesWrapper();
-			HttpCookiesWrapper(std::string responseHeaders);
-			//~HttpCookiesWrapper();
-			void ParseCookies(std::string responseHeaders);
+			HttpCookiesWrapper(_In_ std::string responseHeaders);
+
+			/// <summary>
+			/// 解析响应头中的cookie
+			/// </summary>
+			/// <param name="responseHeaders"></param>
+			void ParseCookies(_In_ std::string responseHeaders);
+			
+			/// <summary>
+			/// 获取指定cookie的值
+			/// </summary>
+			/// <param name="key"></param>
+			/// <returns></returns>
 			std::string GetCookieValue(const std::string& key);
+			
+			/// <summary>
+			/// 获取所有cookie的值，格式为 key1=value1; key2=value2
+			/// </summary>
+			/// <returns></returns>
 			std::string GetAllCookies();
 		private:
 			std::map<std::string, std::string> cookies;
-			static std::string Trim(const std::string& str);// 去除字符串前后的空格
+			static std::string Trim(_In_ const std::string& str);// 去除字符串前后的空格
 		};
 
 		/// <summary>
@@ -45,7 +60,13 @@ namespace ytpp {
 			/// <param name="ssl">是否开启ssl验证。默认为true</param>
 			/// <param name="lpfnCurlOptions">额外设置函数回调，参数一为CURL*指针</param>
 			/// <returns>HttpResponse</returns>
-			static HttpResponse Get(std::string url, std::string headersEx = "", std::string proxy = "", bool ssl = true, std::function<void(CURL*)> lpfnCurlOptions = nullptr);
+			static HttpResponse Get(
+				_In_ std::string url,
+				_In_ std::string headersEx = "",
+				_In_ std::string proxy = "",
+				_In_ bool ssl = true,
+				_In_ std::function<void(CURL*)> lpfnCurlOptions = nullptr);
+
 			/// <summary>
 			/// 发送POST请求
 			/// </summary>
@@ -56,7 +77,13 @@ namespace ytpp {
 			/// <param name="ssl">是否开启ssl验证，默认为true</param>
 			/// <param name="lpfnCurlOptions">额外设置函数回调，参数一为CURL*指针</param>
 			/// <returns></returns>
-			static HttpResponse Post(std::string url, std::string postData = "", std::string headersEx = "", std::string proxy = "", bool ssl = true, std::function<void(CURL*)> lpfnCurlOptions = nullptr);
+			static HttpResponse Post(
+				_In_ std::string url,
+				_In_ std::string postData = "",
+				_In_ std::string headersEx = "",
+				_In_ std::string proxy = "",
+				_In_ bool ssl = true,
+				_In_ std::function<void(CURL*)> lpfnCurlOptions = nullptr);
 		};
 
 

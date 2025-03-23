@@ -18,11 +18,12 @@ namespace ytpp {
 		static size_t HeaderCallback(void* contents, size_t size, size_t nmemb, std::string* header);
 
 		/* 发送GET请求 */
-		HttpResponse HttpRequest::Get(std::string url,
-			std::string headersEx /*= ""*/,
-			std::string proxy /*= ""*/,
-			bool ssl /*= true*/,
-			std::function<void(CURL*)> lpfnCurlOptions /*= nullptr*/)
+		HttpResponse HttpRequest::Get(
+			_In_ std::string url,
+			_In_ std::string headersEx /*= ""*/,
+			_In_ std::string proxy /*= ""*/,
+			_In_ bool ssl /*= true*/,
+			_In_ std::function<void(CURL*)> lpfnCurlOptions /*= nullptr*/)
 		{
 			HttpResponse ret;
 
@@ -77,11 +78,12 @@ namespace ytpp {
 
 		/* 发送POST请求 */
 		HttpResponse HttpRequest::Post(
-			std::string url, std::string postData /*= ""*/,
-			std::string headersEx /*= ""*/,
-			std::string proxy /*= ""*/,
-			bool ssl /*= true*/,
-			std::function<void(CURL*)> lpfnCurlOptions /*= nullptr*/)
+			_In_ std::string url,
+			_In_ std::string postData /*= ""*/,
+			_In_ std::string headersEx /*= ""*/,
+			_In_ std::string proxy /*= ""*/,
+			_In_ bool ssl /*= true*/,
+			_In_ std::function<void(CURL*)> lpfnCurlOptions /*= nullptr*/)
 		{
 			HttpResponse ret;
 
@@ -144,7 +146,7 @@ namespace ytpp {
 		}
 
 		/* Cookies构造器 */
-		HttpCookiesWrapper::HttpCookiesWrapper(std::string responseHeaders)
+		HttpCookiesWrapper::HttpCookiesWrapper(_In_ std::string responseHeaders)
 		{
 			ParseCookies(responseHeaders);
 		}
@@ -156,7 +158,7 @@ namespace ytpp {
 		}
 
 		/* 解析Cookies */
-		void HttpCookiesWrapper::ParseCookies(std::string responseHeaders)
+		void HttpCookiesWrapper::ParseCookies(_In_ std::string responseHeaders)
 		{
 			this->cookies.clear(); // 清空之前的cookie
 
@@ -190,14 +192,14 @@ namespace ytpp {
 		}
 
 		/* 去除前后的空格 */
-		std::string HttpCookiesWrapper::Trim(const std::string& str) {
+		std::string HttpCookiesWrapper::Trim(_In_ const std::string& str) {
 			size_t first = str.find_first_not_of(" \t\r\n");
 			size_t last = str.find_last_not_of(" \t\r\n");
 			return (first == std::string::npos) ? "" : str.substr(first, last - first + 1);
 		}
 
 		/* 获取单个Cookie值 */
-		std::string HttpCookiesWrapper::GetCookieValue(const std::string& key)
+		std::string HttpCookiesWrapper::GetCookieValue(_In_ const std::string& key)
 		{
 			return this->cookies[key];
 		}
