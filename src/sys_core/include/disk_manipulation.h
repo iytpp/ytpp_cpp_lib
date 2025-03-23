@@ -10,11 +10,13 @@
 
 #define file_isExists file_isExistsW
 #define write_to_file write_to_fileW
+#define write_resource_file write_resource_fileW
 
 #else /* ANSI */
 
 #define file_isExists file_isExistsA
 #define write_to_file write_to_fileA
+#define write_resource_file write_resource_fileA
 
 #endif /* _UNICODE */
 
@@ -147,6 +149,35 @@ namespace ytpp {
 			_In_ const wstring & data
 		);
 
+		/*
+		* @brief 将自定义资源写出到指定路径
+		* @param [in] hModule: 模块句柄，从哪个模块中提取资源
+		* @param [in] resID: 资源ID，通常在resource.h中定义
+		* @param [in] resType: 资源类型名
+		* @param [in] outPath: 输出路径
+		* @return true 写入成功，false 写入失败
+		*/
+		bool write_resource_fileA(
+			_In_ HMODULE hModule,
+			_In_ int resID,
+			_In_ string resType,
+			_In_ string outPath
+		);
+
+		/*
+		* @brief 将自定义资源写出到指定路径，宽字符版本
+		* @param [in] hModule: 模块句柄，从哪个模块中提取资源
+		* @param [in] resID: 资源ID，通常在resource.h中定义
+		* @param [in] resType: 资源类型名
+		* @param [in] outPath: 输出路径
+		* @return true 写入成功，false 写入失败
+		*/
+		bool write_resource_fileW(
+			_In_ HMODULE hModule,
+			_In_ int resID,
+			_In_ wstring resType,
+			_In_ wstring outPath
+		);
 	}
 }
 
