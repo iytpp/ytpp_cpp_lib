@@ -39,6 +39,9 @@
     <ClInclude Include="..\..\src\.private\include\debug_tools.h">
       <Filter>private</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\sys_core\include\stringEx.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\sys_core\cpp\disk_manipulation.cpp">
@@ -48,6 +51,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\sys_core\cpp\sys_processing.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\sys_core\cpp\stringEx.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

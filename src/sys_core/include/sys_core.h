@@ -13,6 +13,8 @@
 #include "encoding.h"
 //系统处理
 #include "sys_processing.h"
+//字符串处理
+#include "stringEx.h"
 
 
 

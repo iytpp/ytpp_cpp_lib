@@ -151,12 +151,14 @@
     <ClInclude Include="..\..\src\.private\include\debug_tools.h" />
     <ClInclude Include="..\..\src\sys_core\include\disk_manipulation.h" />
     <ClInclude Include="..\..\src\sys_core\include\encoding.h" />
+    <ClInclude Include="..\..\src\sys_core\include\stringEx.h" />
     <ClInclude Include="..\..\src\sys_core\include\sys_core.h" />
     <ClInclude Include="..\..\src\sys_core\include\sys_processing.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\sys_core\cpp\disk_manipulation.cpp" />
     <ClCompile Include="..\..\src\sys_core\cpp\encoding.cpp" />
+    <ClCompile Include="..\..\src\sys_core\cpp\stringEx.cpp" />
     <ClCompile Include="..\..\src\sys_core\cpp\sys_processing.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
