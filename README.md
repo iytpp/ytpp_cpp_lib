@@ -18,14 +18,19 @@
 
  **开发各个库的时候需要引入的include文件夹** 
 
-1. `$(YTPP_CPP_LIB)\src\.private\include`
-2. `$(YTPP_CPP_LIB)\src\.common\include`
-3. `各个库自己的include文件夹，例如：$(YTPP_CPP_LIB)\src\xxxxxx\include`
+1. `$(YTPP_CPP_LIB)\include\.common`
+2. `$(YTPP_CPP_LIB)\include\.private`
+3. `$(YTPP_CPP_LIB)\include`
+4. `$(YTPP_CPP_LIB)\third_party\include`（如果要引用第三方库）
 
  **使用各个库的时候需要引入的include文件夹** 
 
-1. `$(YTPP_CPP_LIB)\src\.common\include`
-2. `各个库自己的include文件夹，例如：$(YTPP_CPP_LIB)\src\xxxxxx\include`
+1. `$(YTPP_CPP_LIB)\include\.common`
+2. `$(YTPP_CPP_LIB)\include`
+
+ **引用各库的方式**
+	所有的库（不论是项目库还是第三方库）在 `$(YTPP_CPP_LIB)\include` 文件夹中都有以项目名为名称的文件夹，文件夹中又有对应的头文件。所以不论是项目库还是第三方库的引用方式如下。
+`#include <xx/xxxx.h>`（其中xx是库名，xxxx是头文件名）
 
 ### 参与贡献
 

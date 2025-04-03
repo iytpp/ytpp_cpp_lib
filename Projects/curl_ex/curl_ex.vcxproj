@@ -67,10 +67,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\curl_ex\cpp\curl_ex.cpp" />
+    <ClInclude Include="..\..\include\curl_ex\curl_ex.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\curl_ex\include\curl_ex.h" />
+    <ClCompile Include="..\..\source\curl_ex\curl_ex.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
@@ -247,16 +247,16 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>$(YTPP_CPP_LIB)\src\curl_ex\static_lib\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>$(YTPP_CPP_LIB)\bin\$(ProjectName)\static_lib\$(PlatformTarget)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>$(YTPP_CPP_LIB)\src\curl_ex\static_lib\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>$(YTPP_CPP_LIB)\bin\$(ProjectName)\static_lib\$(PlatformTarget)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(YTPP_CPP_LIB)\src\curl_ex\static_lib\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>$(YTPP_CPP_LIB)\bin\$(ProjectName)\static_lib\$(PlatformTarget)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(YTPP_CPP_LIB)\src\curl_ex\static_lib\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>$(YTPP_CPP_LIB)\bin\$(ProjectName)\static_lib\$(PlatformTarget)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -419,7 +419,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\src\curl_ex\include\jsoncpp;$(YTPP_CPP_LIB)\src\curl_ex\include;$(YTPP_CPP_LIB)\src\.common\include;$(YTPP_CPP_LIB)\src\.private\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\include\.common;$(YTPP_CPP_LIB)\include\.private;$(YTPP_CPP_LIB)\include;$(YTPP_CPP_LIB)\third_party\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -429,8 +429,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalDependencies>./$(Platform)/$(Configuration)/libcurl.lib;./$(Platform)/$(Configuration)/zlib.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\src\curl_ex\curl\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>curl/$(PlatformTarget)/$(Configuration)/libcurl.lib;curl/$(PlatformTarget)/$(Configuration)/zlib.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\third_party\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -458,7 +458,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\src\curl_ex\include\jsoncpp;$(YTPP_CPP_LIB)\src\curl_ex\include;$(YTPP_CPP_LIB)\src\.common\include;$(YTPP_CPP_LIB)\src\.private\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\include\.common;$(YTPP_CPP_LIB)\include\.private;$(YTPP_CPP_LIB)\include;$(YTPP_CPP_LIB)\third_party\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -468,8 +468,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalDependencies>./$(Platform)/$(Configuration)/libcurl.lib;./$(Platform)/$(Configuration)/zlib.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\src\curl_ex\curl\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>curl/$(PlatformTarget)/$(Configuration)/libcurl.lib;curl/$(PlatformTarget)/$(Configuration)/zlib.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\third_party\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -497,7 +497,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\src\curl_ex\include\jsoncpp;$(YTPP_CPP_LIB)\src\curl_ex\include;$(YTPP_CPP_LIB)\src\.common\include;$(YTPP_CPP_LIB)\src\.private\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\include\.common;$(YTPP_CPP_LIB)\include\.private;$(YTPP_CPP_LIB)\include;$(YTPP_CPP_LIB)\third_party\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -507,8 +507,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalDependencies>./$(Platform)/$(Configuration)/libcurl.lib;./$(Platform)/$(Configuration)/zlib.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\src\curl_ex\curl\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>curl/$(PlatformTarget)/$(Configuration)/libcurl.lib;curl/$(PlatformTarget)/$(Configuration)/zlib.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\third_party\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -536,7 +536,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\src\curl_ex\include\jsoncpp;$(YTPP_CPP_LIB)\src\curl_ex\include;$(YTPP_CPP_LIB)\src\.common\include;$(YTPP_CPP_LIB)\src\.private\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\include\.common;$(YTPP_CPP_LIB)\include\.private;$(YTPP_CPP_LIB)\include;$(YTPP_CPP_LIB)\third_party\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -546,8 +546,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalDependencies>./$(Platform)/$(Configuration)/libcurl.lib;./$(Platform)/$(Configuration)/zlib.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\src\curl_ex\curl\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>curl/$(PlatformTarget)/$(Configuration)/libcurl.lib;curl/$(PlatformTarget)/$(Configuration)/zlib.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\third_party\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

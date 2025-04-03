@@ -67,10 +67,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\jsoncpp_ex\cpp\jsoncpp_ex.cpp" />
+    <ClInclude Include="..\..\include\jsoncpp_ex\jsoncpp_ex.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\jsoncpp_ex\include\jsoncpp_ex.h" />
+    <ClCompile Include="..\..\source\jsoncpp_ex\jsoncpp_ex.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
@@ -247,16 +247,16 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>$(YTPP_CPP_LIB)\src\jsoncpp_ex\static_lib\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>$(YTPP_CPP_LIB)\bin\$(ProjectName)\static_lib\$(PlatformTarget)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>$(YTPP_CPP_LIB)\src\jsoncpp_ex\static_lib\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>$(YTPP_CPP_LIB)\bin\$(ProjectName)\static_lib\$(PlatformTarget)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(YTPP_CPP_LIB)\src\jsoncpp_ex\static_lib\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>$(YTPP_CPP_LIB)\bin\$(ProjectName)\static_lib\$(PlatformTarget)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(YTPP_CPP_LIB)\src\jsoncpp_ex\static_lib\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>$(YTPP_CPP_LIB)\bin\$(ProjectName)\static_lib\$(PlatformTarget)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -368,7 +368,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\src\jsoncpp_ex\include\jsoncpp;$(YTPP_CPP_LIB)\src\jsoncpp_ex\include;$(YTPP_CPP_LIB)\src\.common\include;$(YTPP_CPP_LIB)\src\.private\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\include\.common;$(YTPP_CPP_LIB)\include\.private;$(YTPP_CPP_LIB)\include;$(YTPP_CPP_LIB)\third_party\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <Optimization>Disabled</Optimization>
       <WholeProgramOptimization>false</WholeProgramOptimization>
@@ -381,8 +381,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\src\jsoncpp_ex\jsoncpp\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>./$(Platform)/$(Configuration)/jsoncpp_static.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\third_party\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>jsoncpp/$(PlatformTarget)/$(Configuration)/jsoncpp_static.lib</AdditionalDependencies>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -393,7 +393,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\src\jsoncpp_ex\include\jsoncpp;$(YTPP_CPP_LIB)\src\jsoncpp_ex\include;$(YTPP_CPP_LIB)\src\.common\include;$(YTPP_CPP_LIB)\src\.private\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\include\.common;$(YTPP_CPP_LIB)\include\.private;$(YTPP_CPP_LIB)\include;$(YTPP_CPP_LIB)\third_party\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -403,8 +403,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\src\jsoncpp_ex\jsoncpp\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>./$(Platform)/$(Configuration)/jsoncpp_static.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\third_party\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>jsoncpp/$(PlatformTarget)/$(Configuration)/jsoncpp_static.lib</AdditionalDependencies>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -517,7 +517,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\src\jsoncpp_ex\include\jsoncpp;$(YTPP_CPP_LIB)\src\jsoncpp_ex\include;$(YTPP_CPP_LIB)\src\.common\include;$(YTPP_CPP_LIB)\src\.private\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\include\.common;$(YTPP_CPP_LIB)\include\.private;$(YTPP_CPP_LIB)\include;$(YTPP_CPP_LIB)\third_party\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <Optimization>Disabled</Optimization>
       <WholeProgramOptimization>false</WholeProgramOptimization>
@@ -530,8 +530,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\src\jsoncpp_ex\jsoncpp\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>./$(Platform)/$(Configuration)/jsoncpp_static.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\third_party\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>jsoncpp/$(PlatformTarget)/$(Configuration)/jsoncpp_static.lib</AdditionalDependencies>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -542,7 +542,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\src\jsoncpp_ex\include\jsoncpp;$(YTPP_CPP_LIB)\src\jsoncpp_ex\include;$(YTPP_CPP_LIB)\src\.common\include;$(YTPP_CPP_LIB)\src\.private\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\include\.common;$(YTPP_CPP_LIB)\include\.private;$(YTPP_CPP_LIB)\include;$(YTPP_CPP_LIB)\third_party\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -552,8 +552,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\src\jsoncpp_ex\jsoncpp\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>./$(Platform)/$(Configuration)/jsoncpp_static.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\third_party\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>jsoncpp/$(PlatformTarget)/$(Configuration)/jsoncpp_static.lib</AdditionalDependencies>
     </Lib>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

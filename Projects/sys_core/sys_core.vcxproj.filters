@@ -21,39 +21,51 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\.common\include\compatibility.h">
+    <ClInclude Include="..\..\include\.common\compatibility.h">
       <Filter>common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\sys_core\include\disk_manipulation.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\sys_core\include\encoding.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\sys_core\include\sys_core.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\sys_core\include\sys_processing.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\.private\include\debug_tools.h">
+    <ClInclude Include="..\..\include\.private\debug_tools.h">
       <Filter>private</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\sys_core\include\stringEx.h">
+    <ClInclude Include="..\..\include\sys_core\disk_manipulation.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\sys_core\encoding.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\sys_core\machine_feature.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\sys_core\string_ex.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\sys_core\sys_core.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\sys_core\sys_processing.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\sys_core\hash.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\sys_core\cpp\disk_manipulation.cpp">
+    <ClCompile Include="..\..\source\sys_core\disk_manipulation.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\sys_core\cpp\encoding.cpp">
+    <ClCompile Include="..\..\source\sys_core\encoding.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\sys_core\cpp\sys_processing.cpp">
+    <ClCompile Include="..\..\source\sys_core\machine_feature.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\sys_core\cpp\stringEx.cpp">
+    <ClCompile Include="..\..\source\sys_core\string_ex.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\sys_core\sys_processing.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\sys_core\hash.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

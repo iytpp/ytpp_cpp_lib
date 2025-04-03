@@ -71,16 +71,16 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>$(YTPP_CPP_LIB)\src\sys_core\static_lib\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>$(YTPP_CPP_LIB)\bin\$(ProjectName)\static_lib\$(PlatformTarget)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>$(YTPP_CPP_LIB)\src\sys_core\static_lib\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>$(YTPP_CPP_LIB)\bin\$(ProjectName)\static_lib\$(PlatformTarget)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(YTPP_CPP_LIB)\src\sys_core\static_lib\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>$(YTPP_CPP_LIB)\bin\$(ProjectName)\static_lib\$(PlatformTarget)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(YTPP_CPP_LIB)\src\sys_core\static_lib\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>$(YTPP_CPP_LIB)\bin\$(ProjectName)\static_lib\$(PlatformTarget)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -88,13 +88,17 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\src\sys_core\include;$(YTPP_CPP_LIB)\src\.common\include;$(YTPP_CPP_LIB)\src\.private\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\include\.common;$(YTPP_CPP_LIB)\include\.private;$(YTPP_CPP_LIB)\include;$(YTPP_CPP_LIB)\third_party\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
       </SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <Lib>
+      <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\third_party\static_lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>openssl/$(PlatformTarget)/$(Configuration)/libcrypto.lib;openssl/$(PlatformTarget)/$(Configuration)/libssl.lib;wbemuuid.lib;Crypt32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -104,7 +108,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\src\sys_core\include;$(YTPP_CPP_LIB)\src\.common\include;$(YTPP_CPP_LIB)\src\.private\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\include\.common;$(YTPP_CPP_LIB)\include\.private;$(YTPP_CPP_LIB)\include;$(YTPP_CPP_LIB)\third_party\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -113,6 +117,10 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <Lib>
+      <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\third_party\static_lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>openssl/$(PlatformTarget)/$(Configuration)/libcrypto.lib;openssl/$(PlatformTarget)/$(Configuration)/libssl.lib;wbemuuid.lib;Crypt32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -120,13 +128,17 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\src\sys_core\include;$(YTPP_CPP_LIB)\src\.common\include;$(YTPP_CPP_LIB)\src\.private\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\include\.common;$(YTPP_CPP_LIB)\include\.private;$(YTPP_CPP_LIB)\include;$(YTPP_CPP_LIB)\third_party\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
       </SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <Lib>
+      <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\third_party\static_lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>openssl/$(PlatformTarget)/$(Configuration)/libcrypto.lib;openssl/$(PlatformTarget)/$(Configuration)/libssl.lib;wbemuuid.lib;Crypt32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -136,7 +148,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\src\sys_core\include;$(YTPP_CPP_LIB)\src\.common\include;$(YTPP_CPP_LIB)\src\.private\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\include\.common;$(YTPP_CPP_LIB)\include\.private;$(YTPP_CPP_LIB)\include;$(YTPP_CPP_LIB)\third_party\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -145,21 +157,29 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <Lib>
+      <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\third_party\static_lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>openssl/$(PlatformTarget)/$(Configuration)/libcrypto.lib;openssl/$(PlatformTarget)/$(Configuration)/libssl.lib;wbemuuid.lib;Crypt32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\.common\include\compatibility.h" />
-    <ClInclude Include="..\..\src\.private\include\debug_tools.h" />
-    <ClInclude Include="..\..\src\sys_core\include\disk_manipulation.h" />
-    <ClInclude Include="..\..\src\sys_core\include\encoding.h" />
-    <ClInclude Include="..\..\src\sys_core\include\stringEx.h" />
-    <ClInclude Include="..\..\src\sys_core\include\sys_core.h" />
-    <ClInclude Include="..\..\src\sys_core\include\sys_processing.h" />
+    <ClInclude Include="..\..\include\.common\compatibility.h" />
+    <ClInclude Include="..\..\include\.private\debug_tools.h" />
+    <ClInclude Include="..\..\include\sys_core\disk_manipulation.h" />
+    <ClInclude Include="..\..\include\sys_core\encoding.h" />
+    <ClInclude Include="..\..\include\sys_core\hash.h" />
+    <ClInclude Include="..\..\include\sys_core\machine_feature.h" />
+    <ClInclude Include="..\..\include\sys_core\string_ex.h" />
+    <ClInclude Include="..\..\include\sys_core\sys_core.h" />
+    <ClInclude Include="..\..\include\sys_core\sys_processing.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\sys_core\cpp\disk_manipulation.cpp" />
-    <ClCompile Include="..\..\src\sys_core\cpp\encoding.cpp" />
-    <ClCompile Include="..\..\src\sys_core\cpp\stringEx.cpp" />
-    <ClCompile Include="..\..\src\sys_core\cpp\sys_processing.cpp" />
+    <ClCompile Include="..\..\source\sys_core\disk_manipulation.cpp" />
+    <ClCompile Include="..\..\source\sys_core\encoding.cpp" />
+    <ClCompile Include="..\..\source\sys_core\hash.cpp" />
+    <ClCompile Include="..\..\source\sys_core\machine_feature.cpp" />
+    <ClCompile Include="..\..\source\sys_core\string_ex.cpp" />
+    <ClCompile Include="..\..\source\sys_core\sys_processing.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
