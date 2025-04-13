@@ -420,6 +420,8 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\include\.common;$(YTPP_CPP_LIB)\include\.private;$(YTPP_CPP_LIB)\include;$(YTPP_CPP_LIB)\third_party\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -429,7 +431,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalDependencies>curl/$(PlatformTarget)/$(Configuration)/libcurl.lib;curl/$(PlatformTarget)/$(Configuration)/zlib.lib</AdditionalDependencies>
+      <AdditionalDependencies>curl/$(PlatformTarget)/$(Configuration)/libcurl.lib;curl/$(PlatformTarget)/$(Configuration)/zlib.lib;ws2_32.lib;Crypt32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\third_party\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
@@ -459,6 +461,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\include\.common;$(YTPP_CPP_LIB)\include\.private;$(YTPP_CPP_LIB)\include;$(YTPP_CPP_LIB)\third_party\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -468,7 +471,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalDependencies>curl/$(PlatformTarget)/$(Configuration)/libcurl.lib;curl/$(PlatformTarget)/$(Configuration)/zlib.lib</AdditionalDependencies>
+      <AdditionalDependencies>curl/$(PlatformTarget)/$(Configuration)/libcurl.lib;curl/$(PlatformTarget)/$(Configuration)/zlib.lib;ws2_32.lib;Crypt32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\third_party\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>

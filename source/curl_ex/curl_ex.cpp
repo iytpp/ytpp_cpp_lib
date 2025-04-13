@@ -4,16 +4,313 @@
 #include <functional>
 #include <sstream>
 #include <vector>
+#include <algorithm>
+#include <cctype>
 using namespace std;
 
 #include <curl/curl.h>
 
 #pragma comment(lib, "Crypt32.lib")
+#pragma comment(lib, "ws2_32.lib")
 
 
 namespace ytpp {
 	namespace curl_ex {
 
+#pragma region HttpHeadersWrapper
+		// 去除前后空格
+		std::string HttpHeadersWrapper::Trim(const std::string& str) {
+			std::string result = str;
+			result.erase(result.begin(), std::find_if(result.begin(), result.end(), [](unsigned char ch) {
+				return !std::isspace(ch);
+			}));
+			result.erase(std::find_if(result.rbegin(), result.rend(), [](unsigned char ch) {
+				return !std::isspace(ch);
+			}).base(), result.end());
+			return result;
+		}
+
+		HttpHeadersWrapper::HttpHeadersWrapper() {}
+
+		HttpHeadersWrapper::HttpHeadersWrapper(_In_ std::string responseHeaders) {
+			ParseHeaders(std::move(responseHeaders));
+		}
+
+		HttpHeadersWrapper::HttpHeadersWrapper(const std::map<std::string, std::string>& defaultHeaders, const std::string& responseHeaders) {
+			for (const auto& [key, value] : defaultHeaders) {
+				SetDefaultHeader(key, value);
+			}
+			ParseHeaders(responseHeaders);
+		}
+
+		void HttpHeadersWrapper::ParseHeaders(_In_ std::string responseHeaders) {
+			m_headers.clear();
+			std::istringstream stream(responseHeaders);
+			std::string line;
+
+			while (std::getline(stream, line)) {
+				auto pos = line.find(':');
+				if (pos != std::string::npos) {
+					std::string key = Trim(line.substr(0, pos));
+					std::string value = Trim(line.substr(pos + 1));
+					if (!key.empty()) {
+						m_headers[key] = value;
+					}
+				}
+			}
+		}
+
+		std::string HttpHeadersWrapper::GetHeaderValue(const std::string& key) {
+			auto it = m_headers.find(Trim(key));
+			if (it != m_headers.end()) {
+				return it->second;
+			}
+			return {};
+		}
+
+		std::string HttpHeadersWrapper::GetAllHeaders() {
+			std::ostringstream out;
+			for (const auto& [key, value] : m_headers) {
+				out << key << ": " << value << "\n";
+			}
+			return out.str();
+		}
+
+		bool HttpHeadersWrapper::SetHeader(const std::string& key, const std::string& value) {
+			std::string trimmedKey = Trim(key);
+			if (trimmedKey.empty()) return false;
+			m_headers[trimmedKey] = Trim(value);
+			return true;
+		}
+
+		bool HttpHeadersWrapper::SetDefaultHeader(const std::string& key, const std::string& value) {
+			std::string trimmedKey = Trim(key);
+			if (trimmedKey.empty()) return false;
+			if (!IsExist(trimmedKey)) {
+				m_headers[trimmedKey] = Trim(value);
+				return true;
+			}
+			return false;
+		}
+
+		bool HttpHeadersWrapper::AppendHeader(const std::string& key, const std::string& value, const std::string& delimiter) {
+			std::string trimmedKey = Trim(key);
+			std::string trimmedValue = Trim(value);
+			if (trimmedKey.empty()) return false;
+
+			auto it = m_headers.find(trimmedKey);
+			if (it != m_headers.end()) {
+				it->second += delimiter + trimmedValue;
+			} else {
+				m_headers[trimmedKey] = trimmedValue;
+			}
+			return true;
+		}
+
+		bool HttpHeadersWrapper::EraseHeader(const std::string& key) {
+			return m_headers.erase(Trim(key)) > 0;
+		}
+
+		bool HttpHeadersWrapper::IsExist(const std::string& key) {
+			return m_headers.find(Trim(key)) != m_headers.end();
+		}
+
+		std::vector<std::string> HttpHeadersWrapper::GetKeys() {
+			std::vector<std::string> keys;
+			for (const auto& [key, _] : m_headers) {
+				keys.push_back(key);
+			}
+			return keys;
+		}
+#pragma endregion HttpHeadersWrapper
+
+#pragma region HttpCookiesWrapper
+		std::string HttpCookiesWrapper::Trim(const std::string& str) {
+			auto begin = std::find_if_not(str.begin(), str.end(), ::isspace);
+			auto end = std::find_if_not(str.rbegin(), str.rend(), ::isspace).base();
+			return (begin < end) ? std::string(begin, end) : std::string();
+		}
+
+		std::string Cookie::ToSetCookieString() const {
+			std::ostringstream out;
+			out << name << "=" << value;
+			if (path) out << "; Path=" << *path;
+			if (domain) out << "; Domain=" << *domain;
+			if (expires) out << "; Expires=" << *expires;
+			if (maxAge) out << "; Max-Age=" << *maxAge;
+			if (secure) out << "; Secure";
+			if (httpOnly) out << "; HttpOnly";
+			if (sameSite) out << "; SameSite=" << *sameSite;
+			return out.str();
+		}
+
+		HttpCookiesWrapper::HttpCookiesWrapper() {}
+
+		HttpCookiesWrapper::HttpCookiesWrapper(const std::vector<std::string>& setCookieHeaders) {
+			ParseFromSetCookieHeaders(setCookieHeaders);
+		}
+
+		HttpCookiesWrapper::HttpCookiesWrapper(const std::string& cookieString) {
+			ParseFromCookieString(cookieString);
+		}
+
+		HttpCookiesWrapper::HttpCookiesWrapper(const HttpCookiesWrapper& other) {
+			m_cookies = other.m_cookies;
+		}
+
+		void HttpCookiesWrapper::Merge(const HttpCookiesWrapper& other, bool overwrite) {
+			for (const auto& [key, value] : other.m_cookies) {
+				if (overwrite || m_cookies.find(key) == m_cookies.end()) {
+					m_cookies[key] = value;
+				}
+			}
+		}
+
+		HttpCookiesWrapper HttpCookiesWrapper::MergedWith(const HttpCookiesWrapper& other, bool overwrite) const {
+			HttpCookiesWrapper result = *this; // 拷贝当前对象
+			result.Merge(other, overwrite);    // 使用已有的 Merge 方法
+			return result;
+		}
+
+		std::vector<std::string> HttpCookiesWrapper::ExtractSetCookieHeaders(const std::string& rawHeaders) {
+			std::vector<std::string> result;
+
+			size_t start = 0;
+			while (start < rawHeaders.size()) {
+				size_t end = rawHeaders.find_first_of("\r\n", start);
+				if (end == std::string::npos)
+					end = rawHeaders.size();
+
+				std::string line = Trim(rawHeaders.substr(start, end - start));
+				if (line.size() >= 11) {
+					std::string prefix = line.substr(0, 11);
+					std::transform(prefix.begin(), prefix.end(), prefix.begin(), ::tolower);
+					if (prefix == "set-cookie:") {
+						result.push_back(Trim(line.substr(11)));
+					}
+				}
+
+				// 处理混合换行符 \r\n、\n 或 \r
+				if (end < rawHeaders.size()) {
+					if (rawHeaders[end] == '\r' && rawHeaders[end + 1] == '\n') start = end + 2;
+					else start = end + 1;
+				} else {
+					break;
+				}
+			}
+
+			return result;
+		}
+
+		void HttpCookiesWrapper::ParseFromSetCookieHeaders(const std::vector<std::string>& setCookieHeaders) {
+			m_cookies.clear(); // 清空之前的cookie
+			for (const auto& header : setCookieHeaders) {
+				std::istringstream stream(header);
+				std::string segment;
+				Cookie cookie;
+
+				bool first = true;
+				while (std::getline(stream, segment, ';')) {
+					auto eqPos = segment.find('=');
+					std::string key = Trim(segment.substr(0, eqPos));
+					std::string value = (eqPos != std::string::npos) ? Trim(segment.substr(eqPos + 1)) : "";
+
+					if (first && !key.empty()) {
+						cookie.name = key;
+						cookie.value = value;
+						first = false;
+					} else {
+						std::string lowerKey = key;
+						std::transform(lowerKey.begin(), lowerKey.end(), lowerKey.begin(), ::tolower);
+						if (lowerKey == "path") cookie.path = value;
+						else if (lowerKey == "domain") cookie.domain = value;
+						else if (lowerKey == "expires") cookie.expires = value;
+						else if (lowerKey == "max-age") cookie.maxAge = std::stoi(value);
+						else if (lowerKey == "secure") cookie.secure = true;
+						else if (lowerKey == "httponly") cookie.httpOnly = true;
+						else if (lowerKey == "samesite") cookie.sameSite = value;
+					}
+				}
+				if (!cookie.name.empty())
+					m_cookies[cookie.name] = cookie;
+			}
+		}
+
+		void HttpCookiesWrapper::ParseFromCookieString(const std::string& cookieString) {
+			m_cookies.clear(); // 清空之前的cookie
+			std::istringstream stream(cookieString);
+			std::string token;
+
+			while (std::getline(stream, token, ';')) {
+				auto eqPos = token.find('=');
+				if (eqPos != std::string::npos) {
+					std::string key = Trim(token.substr(0, eqPos));
+					std::string val = Trim(token.substr(eqPos + 1));
+					if (!key.empty()) {
+						Cookie cookie { key, val };
+						m_cookies[key] = cookie;
+					}
+				}
+			}
+		}
+
+		void HttpCookiesWrapper::SetCookie(const Cookie& cookie) {
+			m_cookies[cookie.name] = cookie;
+		}
+
+		void HttpCookiesWrapper::SetCookie(const std::string& name, const std::string& value) {
+			Cookie cookie { Trim(name), Trim(value) };
+			m_cookies[cookie.name] = cookie;
+		}
+
+		bool HttpCookiesWrapper::EraseCookie(const std::string& name) {
+			return m_cookies.erase(Trim(name)) > 0;
+		}
+
+		bool HttpCookiesWrapper::IsExist(const std::string& name) const {
+			return m_cookies.find(name) != m_cookies.end();
+		}
+
+		std::string HttpCookiesWrapper::GetCookieValue(const std::string& name) const {
+			auto it = m_cookies.find(name);
+			return (it != m_cookies.end()) ? it->second.value : "";
+		}
+
+		std::vector<std::string> HttpCookiesWrapper::GetAllKeys() const {
+			std::vector<std::string> keys;
+			for (const auto& [k, _] : m_cookies)
+				keys.push_back(k);
+			return keys;
+		}
+
+		std::string HttpCookiesWrapper::ToRequestCookieString() const {
+			std::ostringstream out;
+			bool first = true;
+			for (const auto& [k, cookie] : m_cookies) {
+				if (!first) out << "; ";
+				out << k << "=" << cookie.value;
+				first = false;
+			}
+			return out.str();
+		}
+
+		std::vector<std::string> HttpCookiesWrapper::ToSetCookieHeaders() const {
+			std::vector<std::string> result;
+			for (const auto& [_, cookie] : m_cookies) {
+				result.push_back("Set-Cookie: " + cookie.ToSetCookieString());
+			}
+			return result;
+		}
+
+		std::vector<Cookie> HttpCookiesWrapper::GetAllCookies() const {
+			std::vector<Cookie> all;
+			for (const auto& [_, cookie] : m_cookies)
+				all.push_back(cookie);
+			return all;
+		}
+#pragma endregion HttpCookiesWrapper
+
+#pragma region HttpRequest
 		static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* output);
 		static size_t HeaderCallback(void* contents, size_t size, size_t nmemb, std::string* header);
 
@@ -42,7 +339,7 @@ namespace ytpp {
 			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
 			curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ret.content); // 获取响应内容
 			curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
-			curl_easy_setopt(curl, CURLOPT_HEADERDATA, &ret.headers); // 获取响应头
+			curl_easy_setopt(curl, CURLOPT_HEADERDATA, &ret.org_headers); // 获取响应头
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers); // 设置请求头
 			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, ssl ? 1L : 0L); // 验证服务器 SSL 证书
 			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, ssl ? 2L : 0L); // 验证服务器主机名
@@ -68,7 +365,9 @@ namespace ytpp {
 				ret.code = response_code;
 				// 响应内容和响应头直接用回调函数获取了，这里不用处理
 				// 解析Cookies
-				ret.cookies.ParseCookies(ret.headers);
+				ret.cookies.ParseFromSetCookieHeaders(HttpCookiesWrapper::ExtractSetCookieHeaders(ret.org_headers));
+				// 解析headers
+				ret.headers.ParseHeaders(ret.org_headers);
 			}
 
 			curl_slist_free_all(headers);
@@ -104,7 +403,7 @@ namespace ytpp {
 			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
 			curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ret.content); // 获取响应内容
 			curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
-			curl_easy_setopt(curl, CURLOPT_HEADERDATA, &ret.headers); // 获取响应头
+			curl_easy_setopt(curl, CURLOPT_HEADERDATA, &ret.org_headers); // 获取响应头
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers); // 设置请求头
 			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, ssl ? 1L : 0L);
 			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, ssl ? 2L : 0L);
@@ -124,7 +423,9 @@ namespace ytpp {
 				ret.code = response_code;
 				// 响应内容和响应头直接用回调函数获取了，这里不用处理
 				// 解析Cookies
-				ret.cookies.ParseCookies(ret.headers);
+				ret.cookies.ParseFromSetCookieHeaders(HttpCookiesWrapper::ExtractSetCookieHeaders(ret.org_headers));
+				// 解析headers
+				ret.headers.ParseHeaders(ret.org_headers);
 			}
 
 			curl_slist_free_all(headers);
@@ -144,78 +445,7 @@ namespace ytpp {
 			header->append((char*)contents, totalSize);
 			return totalSize;
 		}
-
-		/* Cookies构造器 */
-		HttpCookiesWrapper::HttpCookiesWrapper(_In_ std::string responseHeaders)
-		{
-			ParseCookies(responseHeaders);
-		}
-
-		/* 默认构造 */
-		HttpCookiesWrapper::HttpCookiesWrapper()
-		{
-			//啥也不写
-		}
-
-		/* 解析Cookies */
-		void HttpCookiesWrapper::ParseCookies(_In_ std::string responseHeaders)
-		{
-			this->cookies.clear(); // 清空之前的cookie
-
-			std::istringstream stream(responseHeaders);
-			std::string line;
-			std::string lastValue = "";  // 存储最后一个非空的值
-
-			while (std::getline(stream, line)) {
-				// 只处理 Set-Cookie 行
-				if (line.find("set-cookie:") == 0 || line.find("Set-Cookie:") == 0) {
-					size_t start = line.find(":") + 1;
-					std::string cookie = line.substr(start);
-
-					// 取出 key=value
-					cookie = cookie.substr(0, cookie.find(";"));
-					cookie = Trim(cookie);  // 去除前后空格
-
-					// 查找 key
-					size_t equalPos = cookie.find("=");
-					if (equalPos != std::string::npos) {
-						std::string cookieKey = cookie.substr(0, equalPos);
-						std::string cookieValue = cookie.substr(equalPos + 1);
-
-						if (!cookieValue.empty()) {
-							lastValue = cookieValue;  // 只有当 value 不为空时才更新
-							this->cookies[cookieKey] = cookieValue;
-						}
-					}
-				}
-			}
-		}
-
-		/* 去除前后的空格 */
-		std::string HttpCookiesWrapper::Trim(_In_ const std::string& str) {
-			size_t first = str.find_first_not_of(" \t\r\n");
-			size_t last = str.find_last_not_of(" \t\r\n");
-			return (first == std::string::npos) ? "" : str.substr(first, last - first + 1);
-		}
-
-		/* 获取单个Cookie值 */
-		std::string HttpCookiesWrapper::GetCookieValue(_In_ const std::string& key)
-		{
-			return this->cookies[key];
-		}
-
-		/* 将Cookies整理成key=value;key=value;的形式 */
-		std::string HttpCookiesWrapper::GetAllCookies()
-		{
-			std::string result;
-			for (const auto& cookie : this->cookies) {
-				result += cookie.first + "=" + cookie.second + ";";
-			}
-			return result;
-		}
-
-
-
+#pragma endregion HttpRequest
 
 	}
 }
