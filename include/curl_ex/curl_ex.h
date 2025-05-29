@@ -4,12 +4,15 @@
 #include <functional>
 #include <optional>
 #include <map>
+#include <vector>
+#include <algorithm>
 
 #include <curl/curl.h>
 
 namespace ytpp {
 	namespace curl_ex {
-
+		std::string UrlEncode(const std::string& input);
+		std::string UrlDecode(const std::string& input);
 
 #pragma region HttpHeaderWrapper
 		class HttpHeadersWrapper {
@@ -111,20 +114,23 @@ namespace ytpp {
 			bool EraseCookie(const std::string& name);
 			// 是否存在
 			bool IsExist(const std::string& name) const;
+			// 删除value为空的Cookie
+			void RemoveEmptyCookies();
+
 			// 获取Cookie值
 			std::string GetCookieValue(const std::string& name) const;
 
 			// 导出所有名字
-			std::vector<std::string> GetAllKeys() const;
+			std::vector<std::string> GetAllKeys(bool ignoreNull = false) const;
 
 			// 转换为请求头格式
-			std::string ToRequestCookieString() const;
+			std::string ToRequestCookieString(bool ignoreNull = false) const;
 
 			// 转换为 Set-Cookie 多行头
-			std::vector<std::string> ToSetCookieHeaders() const;
+			std::vector<std::string> ToSetCookieHeaders(bool ignoreNull = false) const;
 
 			// 获取所有 Cookie 对象
-			std::vector<Cookie> GetAllCookies() const;
+			std::vector<Cookie> GetAllCookies(bool ignoreNull = false) const;
 
 		private:
 			std::map<std::string, Cookie> m_cookies;
@@ -141,10 +147,11 @@ namespace ytpp {
 			bool success = true;
 			std::string error = "";
 			std::string content = "";
-			int code = 0;
+			int code = 0; // 响应状态码
 			std::string org_headers = ""; // 原始多行响应头
 			HttpHeadersWrapper headers;
 			HttpCookiesWrapper cookies;
+			int curl_code = 0; // curl结果码
 		};
 
 		class HttpRequest {

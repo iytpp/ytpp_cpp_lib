@@ -16,6 +16,34 @@ using namespace std;
 
 namespace ytpp {
 	namespace curl_ex {
+		std::string UrlEncode(const std::string& input) {
+			CURL* curl = curl_easy_init();
+			if (!curl) return "";
+
+			char* output = curl_easy_escape(curl, input.c_str(), static_cast<int>(input.length()));
+			std::string encoded;
+			if (output) {
+				encoded = output;
+				curl_free(output);
+			}
+			curl_easy_cleanup(curl);
+			return encoded;
+		}
+		std::string UrlDecode(const std::string& input) {
+			CURL* curl = curl_easy_init();
+			if (!curl) return "";
+
+			int outlength;
+			char* output = curl_easy_unescape(curl, input.c_str(), static_cast<int>(input.length()), &outlength);
+			std::string decoded;
+			if (output) {
+				decoded.assign(output, outlength);
+				curl_free(output);
+			}
+			curl_easy_cleanup(curl);
+			return decoded;
+		}
+
 
 #pragma region HttpHeadersWrapper
 		// 去除前后空格
@@ -73,7 +101,12 @@ namespace ytpp {
 			for (const auto& [key, value] : m_headers) {
 				out << key << ": " << value << "\n";
 			}
-			return out.str();
+			std::string outStr = out.str();
+			//去掉最后一个换行符
+			if (!outStr.empty()) {
+				outStr.pop_back();
+			}
+			return outStr;
 		}
 
 		bool HttpHeadersWrapper::SetHeader(const std::string& key, const std::string& value) {
@@ -271,22 +304,40 @@ namespace ytpp {
 			return m_cookies.find(name) != m_cookies.end();
 		}
 
+		void HttpCookiesWrapper::RemoveEmptyCookies()
+		{
+			for (auto it = m_cookies.begin(); it != m_cookies.end();) {
+				if (it->second.value.empty()) {
+					m_cookies.erase(it++);
+				} else {
+					++it;
+				}
+			}
+		}
+
 		std::string HttpCookiesWrapper::GetCookieValue(const std::string& name) const {
 			auto it = m_cookies.find(name);
 			return (it != m_cookies.end()) ? it->second.value : "";
 		}
 
-		std::vector<std::string> HttpCookiesWrapper::GetAllKeys() const {
+		std::vector<std::string> HttpCookiesWrapper::GetAllKeys(bool ignoreNull) const {
 			std::vector<std::string> keys;
-			for (const auto& [k, _] : m_cookies)
+			for (const auto& [k, _] : m_cookies) {
+				if (ignoreNull) {
+					if (_.value.empty()) break;
+				}
 				keys.push_back(k);
+			}
 			return keys;
 		}
 
-		std::string HttpCookiesWrapper::ToRequestCookieString() const {
+		std::string HttpCookiesWrapper::ToRequestCookieString(bool ignoreNull) const {
 			std::ostringstream out;
 			bool first = true;
 			for (const auto& [k, cookie] : m_cookies) {
+				if (ignoreNull) {
+					if (cookie.value.empty()) break;
+				}
 				if (!first) out << "; ";
 				out << k << "=" << cookie.value;
 				first = false;
@@ -294,18 +345,25 @@ namespace ytpp {
 			return out.str();
 		}
 
-		std::vector<std::string> HttpCookiesWrapper::ToSetCookieHeaders() const {
+		std::vector<std::string> HttpCookiesWrapper::ToSetCookieHeaders(bool ignoreNull) const {
 			std::vector<std::string> result;
 			for (const auto& [_, cookie] : m_cookies) {
+				if (ignoreNull) {
+					if (cookie.value.empty()) break;
+				}
 				result.push_back("Set-Cookie: " + cookie.ToSetCookieString());
 			}
 			return result;
 		}
 
-		std::vector<Cookie> HttpCookiesWrapper::GetAllCookies() const {
+		std::vector<Cookie> HttpCookiesWrapper::GetAllCookies(bool ignoreNull) const {
 			std::vector<Cookie> all;
-			for (const auto& [_, cookie] : m_cookies)
+			for (const auto& [_, cookie] : m_cookies) {
+				if (ignoreNull) {
+					if (cookie.value.empty()) break;
+				}
 				all.push_back(cookie);
+			}
 			return all;
 		}
 #pragma endregion HttpCookiesWrapper
@@ -354,6 +412,7 @@ namespace ytpp {
 
 
 			CURLcode res = curl_easy_perform(curl);
+			ret.curl_code = res;
 			if (res != CURLE_OK) {
 				ret.success = false;
 				ret.error = std::string(curl_easy_strerror(res));
@@ -411,7 +470,12 @@ namespace ytpp {
 				curl_easy_setopt(curl, CURLOPT_PROXY, proxy.c_str()); // 设置代理
 			}
 
+			if (lpfnCurlOptions) {
+				lpfnCurlOptions(curl); // 调用回调函数，设置其他选项
+			}
+
 			CURLcode res = curl_easy_perform(curl);
+			ret.curl_code = res;
 			if (res != CURLE_OK) {
 				ret.success = false;
 				ret.error = std::string(curl_easy_strerror(res));
