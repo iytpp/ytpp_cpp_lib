@@ -6,6 +6,8 @@
 #include <map>
 #include <vector>
 #include <algorithm>
+#include <unordered_map>
+#include <iomanip>
 
 #include <curl/curl.h>
 
@@ -13,6 +15,28 @@ namespace ytpp {
 	namespace curl_ex {
 		std::string UrlEncode(const std::string& input);
 		std::string UrlDecode(const std::string& input);
+
+#pragma region UrlParams
+		class UrlParams {
+		public:
+			UrlParams();
+			explicit UrlParams(const std::string& query);
+
+			void parse(const std::string& query);
+			std::string toString() const;
+
+			std::string get(const std::string& key) const;
+			void set(const std::string& key, const std::string& value);
+			void remove(const std::string& key);
+			bool has(const std::string& key) const;
+
+		private:
+			std::unordered_map<std::string, std::string> params;
+
+			static std::string urlEncode(const std::string& value);
+			static std::string urlDecode(const std::string& value);
+		};
+#pragma endregion UrlParams
 
 #pragma region HttpHeaderWrapper
 		class HttpHeadersWrapper {

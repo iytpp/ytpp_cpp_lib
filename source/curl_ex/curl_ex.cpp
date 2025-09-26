@@ -45,6 +45,102 @@ namespace ytpp {
 		}
 
 
+#pragma region UrlParams
+		UrlParams::UrlParams() = default;
+
+		UrlParams::UrlParams(const std::string& query) {
+			parse(query);
+		}
+
+		void UrlParams::parse(const std::string& query) {
+			params.clear();
+			std::string key, value;
+			std::istringstream iss(query);
+			std::string pair;
+
+			while (std::getline(iss, pair, '&')) {
+				auto pos = pair.find('=');
+				if (pos != std::string::npos) {
+					key = urlDecode(pair.substr(0, pos));
+					value = urlDecode(pair.substr(pos + 1));
+				} else {
+					key = urlDecode(pair);
+					value = "";
+				}
+				params[key] = value;
+			}
+		}
+
+		std::string UrlParams::toString() const {
+			std::ostringstream oss;
+			bool first = true;
+			for (const auto& kv : params) {
+				if (!first) {
+					oss << "&";
+				}
+				oss << urlEncode(kv.first);
+				if (!kv.second.empty()) {
+					oss << "=" << urlEncode(kv.second);
+				}
+				first = false;
+			}
+			return oss.str();
+		}
+
+		std::string UrlParams::get(const std::string& key) const {
+			auto it = params.find(key);
+			return (it != params.end()) ? it->second : "";
+		}
+
+		void UrlParams::set(const std::string& key, const std::string& value) {
+			params[key] = value;
+		}
+
+		void UrlParams::remove(const std::string& key) {
+			params.erase(key);
+		}
+
+		bool UrlParams::has(const std::string& key) const {
+			return params.find(key) != params.end();
+		}
+
+		std::string UrlParams::urlEncode(const std::string& value) {
+			std::ostringstream escaped;
+			escaped.fill('0');
+			escaped << std::hex << std::uppercase;
+
+			for (unsigned char c : value) {
+				if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+					escaped << c;
+				} else {
+					escaped << '%' << std::setw(2) << int(c);
+				}
+			}
+
+			return escaped.str();
+		}
+
+		std::string UrlParams::urlDecode(const std::string& value) {
+			std::ostringstream unescaped;
+			for (size_t i = 0; i < value.size();) {
+				if (value[i] == '%' && i + 2 < value.size()) {
+					int hexValue = 0;
+					std::istringstream iss(value.substr(i + 1, 2));
+					iss >> std::hex >> hexValue;
+					unescaped << static_cast<char>(hexValue);
+					i += 3;
+				} else if (value[i] == '+') {
+					unescaped << ' ';
+					i++;
+				} else {
+					unescaped << value[i];
+					i++;
+				}
+			}
+			return unescaped.str();
+		}
+#pragma endregion UrlParams
+
 #pragma region HttpHeadersWrapper
 		// 去除前后空格
 		std::string HttpHeadersWrapper::Trim(const std::string& str) {
