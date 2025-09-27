@@ -59,6 +59,8 @@ namespace ytpp {
 			std::string pair;
 
 			while (std::getline(iss, pair, '&')) {
+				if (pair.empty()) continue;
+
 				auto pos = pair.find('=');
 				if (pos != std::string::npos) {
 					key = urlDecode(pair.substr(0, pos));
@@ -67,7 +69,7 @@ namespace ytpp {
 					key = urlDecode(pair);
 					value = "";
 				}
-				params[key] = value;
+				params[key].push_back(value);
 			}
 		}
 
@@ -75,25 +77,34 @@ namespace ytpp {
 			std::ostringstream oss;
 			bool first = true;
 			for (const auto& kv : params) {
-				if (!first) {
-					oss << "&";
+				for (const auto& v : kv.second) {
+					if (!first) {
+						oss << "&";
+					}
+					oss << urlEncode(kv.first);
+					if (!v.empty()) {
+						oss << "=" << urlEncode(v);
+					}
+					first = false;
 				}
-				oss << urlEncode(kv.first);
-				if (!kv.second.empty()) {
-					oss << "=" << urlEncode(kv.second);
-				}
-				first = false;
 			}
 			return oss.str();
 		}
 
 		std::string UrlParams::get(const std::string& key) const {
 			auto it = params.find(key);
-			return (it != params.end()) ? it->second : "";
+			if (it != params.end() && !it->second.empty()) {
+				return it->second.front();
+			}
+			return "";
 		}
 
 		void UrlParams::set(const std::string& key, const std::string& value) {
-			params[key] = value;
+			params[key] = { value };
+		}
+
+		void UrlParams::add(const std::string& key, const std::string& value) {
+			params[key].push_back(value);
 		}
 
 		void UrlParams::remove(const std::string& key) {
@@ -102,6 +113,49 @@ namespace ytpp {
 
 		bool UrlParams::has(const std::string& key) const {
 			return params.find(key) != params.end();
+		}
+
+		size_t UrlParams::size() const {
+			size_t total = 0;
+			for (const auto& kv : params) {
+				total += kv.second.size();
+			}
+			return total;
+		}
+
+		std::vector<std::string> UrlParams::getAllParams() const {
+			std::vector<std::string> result;
+			for (const auto& kv : params) {
+				for (const auto& v : kv.second) {
+					if (v.empty()) {
+						result.push_back(kv.first);
+					} else {
+						result.push_back(kv.first + "=" + v);
+					}
+				}
+			}
+			return result;
+		}
+
+		std::vector<std::string> UrlParams::getAllParamNames() const {
+			std::vector<std::string> names;
+			names.reserve(params.size());
+			for (const auto& kv : params) {
+				names.push_back(kv.first);
+			}
+			return names;
+		}
+
+		void UrlParams::clear() {
+			params.clear();
+		}
+
+		std::string& UrlParams::operator[](const std::string& key) {
+			auto& vec = params[key];
+			if (vec.empty()) {
+				vec.push_back(""); // 如果不存在则新建
+			}
+			return vec.front();
 		}
 
 		std::string UrlParams::urlEncode(const std::string& value) {
@@ -116,7 +170,6 @@ namespace ytpp {
 					escaped << '%' << std::setw(2) << int(c);
 				}
 			}
-
 			return escaped.str();
 		}
 
@@ -126,7 +179,9 @@ namespace ytpp {
 				if (value[i] == '%' && i + 2 < value.size()) {
 					int hexValue = 0;
 					std::istringstream iss(value.substr(i + 1, 2));
-					iss >> std::hex >> hexValue;
+					if (!(iss >> std::hex >> hexValue)) {
+						throw std::runtime_error("Invalid URL encoding");
+					}
 					unescaped << static_cast<char>(hexValue);
 					i += 3;
 				} else if (value[i] == '+') {

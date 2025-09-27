@@ -27,11 +27,26 @@ namespace ytpp {
 
 			std::string get(const std::string& key) const;
 			void set(const std::string& key, const std::string& value);
+			void add(const std::string& key, const std::string& value);
 			void remove(const std::string& key);
 			bool has(const std::string& key) const;
 
+			size_t size() const;
+			std::vector<std::string> getAllParams() const;
+			std::vector<std::string> getAllParamNames() const;  // 新增
+			void clear();
+
+			// 迭代器支持
+			auto begin() { return params.begin(); }
+			auto end() { return params.end(); }
+			auto begin() const { return params.begin(); }
+			auto end() const { return params.end(); }
+
+			// 重载[]运算符
+			std::string& operator[](const std::string& key);
+
 		private:
-			std::unordered_map<std::string, std::string> params;
+			std::unordered_map<std::string, std::vector<std::string>> params;
 
 			static std::string urlEncode(const std::string& value);
 			static std::string urlDecode(const std::string& value);
