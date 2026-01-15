@@ -797,6 +797,137 @@ namespace ytpp {
 			return ret;// 技术QQ：1282543064
 		}
 
+		/* 发送PUT请求 */
+		HttpResponse HttpRequest::Put(
+			_In_ std::string url,
+			_In_ std::string postData /*= ""*/,
+			_In_ std::string headersEx /*= ""*/,
+			_In_ std::string proxy /*= ""*/,
+			_In_ bool ssl /*= true*/,
+			_In_ std::function<void(CURL*)> lpfnCurlOptions /*= nullptr*/)
+		{
+			HttpResponse ret;
+
+			CURL* curl = curl_easy_init();
+			if (!curl) {
+				ret.success = false;
+				ret.error = "CURL初始化失败";
+				return ret; // 初始化失败
+			}
+
+			struct curl_slist* headers = NULL;
+			headers = curl_slist_append(headers, "Content-Type: ");
+			headers = curl_slist_append(headers, "Accept: ");
+			headers = curl_slist_append(headers, headersEx.c_str());
+
+			curl_version_info_data* data = curl_version_info(CURLVERSION_NOW);
+
+			// ---- 基本配置 ----
+			curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+			curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
+			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData.c_str());
+			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+			curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ret.content); // 获取响应内容
+			curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
+			curl_easy_setopt(curl, CURLOPT_HEADERDATA, &ret.org_headers); // 获取响应头
+			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers); // 设置请求头
+			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);     // 自动跳转
+			curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);         // 最多跳转 10 次
+			curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1L);        // 自动更新 Referer
+			curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");    // 自动支持 gzip/deflate/br
+			curl_easy_setopt(curl, CURLOPT_TIMEOUT, TIMEOUT);                   // 整体超时
+			curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, CONNECT_TIMEOUT);    // 连接超时
+			curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, LOW_SPEED_TIME);     // LOW_SPEED_TIME秒内速度小于 LOW_SPEED_LIMIT B/s 则认为超时
+			curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, LOW_SPEED_LIMIT);
+
+
+			// ---- SSL 兼容性 ----
+			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, ssl ? 1L : 0L);     // 不验证证书（可改为 1L）
+			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, ssl ? 1L : 0L);
+			curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_DEFAULT);  // 自动选择 TLS 版本
+			curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_ALL);              // 全部启用 SSL 支持
+
+			// ---- HTTP 兼容性 ----
+			curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1); // 优先 HTTP/1.1
+			//curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (libcurl universal client)");
+			curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, ""); // 自动解压支持
+			curl_easy_setopt(curl, CURLOPT_HTTP_CONTENT_DECODING, 1L);
+
+			// ---- 自动 Cookie 处理 ----
+			curl_easy_setopt(curl, CURLOPT_COOKIEFILE, ""); // 内存 cookie
+			//curl_easy_setopt(curl, CURLOPT_COOKIEJAR, "cookies.txt");
+
+			// ---- 代理配置 ----
+			if (!proxy.empty())
+			{
+				curl_easy_setopt(curl, CURLOPT_PROXY, proxy.c_str());
+				// 自动判断代理协议类型（推荐 AUTO）
+				curl_easy_setopt(curl, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
+				// 如果代理字符串带协议前缀，libcurl 会自动识别（如 socks5://）
+				// 可选支持：
+				// CURLPROXY_HTTP, CURLPROXY_HTTPS, CURLPROXY_SOCKS4, CURLPROXY_SOCKS5, CURLPROXY_SOCKS5_HOSTNAME
+			}
+
+			// ---- IPv6/IPv4 自动切换 ----
+			curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_WHATEVER);
+
+			// ---- 自动重试配置 ----
+			curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0L);
+			curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_ALL);
+			curl_easy_setopt(curl, CURLOPT_PROTOCOLS, CURLPROTO_ALL);  // 支持所有协议（HTTP/HTTPS/FTP/FILE等）
+
+
+
+			////curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L); // 调试
+			//curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+			//curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
+			//curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData.c_str());
+			//curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, postData.size());
+			//curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+			//curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ret.content); // 获取响应内容
+			//curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
+			//curl_easy_setopt(curl, CURLOPT_HEADERDATA, &ret.org_headers); // 获取响应头
+			//curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers); // 设置请求头
+			//curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, ssl ? 1L : 0L);
+			//curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, ssl ? 2L : 0L);
+
+			//curl_easy_setopt(curl, CURLOPT_PROXYAUTH, CURLAUTH_ANY); // 设置代理认证方式
+			////curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
+			////curl_easy_setopt(curl, CURLOPT_SSL_OPTIONS, CURLSSLOPT_NO_REVOKE);
+			//curl_easy_setopt(curl, CURLOPT_PROXYAUTH, CURLAUTH_BASIC | CURLAUTH_NTLM | CURLAUTH_DIGEST);
+			////curl_easy_setopt(curl, CURLOPT_PROXYTYPE, CURLPROXY_HTTPS); // 默认值，但最好显式指定
+
+			//if (!proxy.empty()) {
+			//	curl_easy_setopt(curl, CURLOPT_PROXY, proxy.c_str()); // 设置代理
+			//}
+
+			if (lpfnCurlOptions) {
+				lpfnCurlOptions(curl); // 调用回调函数，设置其他选项
+			}
+
+			CURLcode res = curl_easy_perform(curl);
+			ret.curl_code = res;
+			if (res != CURLE_OK) {
+				ret.success = false;
+				ret.error = "CURLcode:" + std::to_string(res) + ", " + std::string(curl_easy_strerror(res));
+			} else {
+				ret.success = true;
+				// 获取响应码
+				long response_code = 0;
+				curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+				ret.code = response_code;
+				// 响应内容和响应头直接用回调函数获取了，这里不用处理
+				// 解析Cookies
+				ret.cookies.ParseFromSetCookieHeaders(HttpCookiesWrapper::ExtractSetCookieHeaders(ret.org_headers));
+				// 解析headers
+				ret.headers.ParseHeaders(ret.org_headers);
+			}
+
+			curl_slist_free_all(headers);
+			curl_easy_cleanup(curl);
+			return ret;
+		}
+
 		/* 回调函数：将传回的数据写入output */
 		static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* output) {
 			size_t totalSize = size * nmemb;

@@ -228,6 +228,24 @@ namespace ytpp {
 				_In_ std::string proxy = "",
 				_In_ bool ssl = true,
 				_In_ std::function<void(CURL*)> lpfnCurlOptions = nullptr);
+
+			/// <summary>
+/// 发送PUT请求
+/// </summary>
+/// <param name="url">要请求的地址</param>
+/// <param name="postData">POST发送的数据</param>
+/// <param name="headersEx">每个头占一行，单个头格式例如 Content-Type: application/json</param>
+/// <param name="proxy">代理地址</param>
+/// <param name="ssl">是否开启ssl验证，默认为true</param>
+/// <param name="lpfnCurlOptions">额外设置函数回调，参数一为CURL*指针</param>
+/// <returns></returns>
+			static HttpResponse Put(
+				_In_ std::string url,
+				_In_ std::string postData = "",
+				_In_ std::string headersEx = "",
+				_In_ std::string proxy = "",
+				_In_ bool ssl = true,
+				_In_ std::function<void(CURL*)> lpfnCurlOptions = nullptr);
 		};
 #pragma endregion HttpRequest
 
