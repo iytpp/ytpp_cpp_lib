@@ -9,6 +9,7 @@
 using namespace std;
 
 #include <curl/curl.h>
+#include <thread>
 
 #pragma comment(lib, "Crypt32.lib")
 #pragma comment(lib, "ws2_32.lib")
@@ -309,10 +310,23 @@ namespace ytpp {
 #pragma endregion HttpHeadersWrapper
 
 #pragma region HttpCookiesWrapper
-		std::string HttpCookiesWrapper::Trim(const std::string& str) {
-			auto begin = std::find_if_not(str.begin(), str.end(), ::isspace);
-			auto end = std::find_if_not(str.rbegin(), str.rend(), ::isspace).base();
-			return (begin < end) ? std::string(begin, end) : std::string();
+		static inline bool IsSpace(unsigned char c) { return std::isspace(c) != 0; }
+
+		static std::optional<long long> ToInt64NoThrow(const std::string& s) {
+			try {
+				size_t idx = 0;
+				long long v = std::stoll(s, &idx, 10);
+				if (idx != s.size()) return std::nullopt; // 有杂字符
+				return v;
+			} catch (...) {
+				return std::nullopt;
+			}
+		}
+
+		std::string HttpCookiesWrapper::Trim(const std::string& s) {
+			auto b = std::find_if_not(s.begin(), s.end(), [](unsigned char c) { return IsSpace(c); });
+			auto e = std::find_if_not(s.rbegin(), s.rend(), [](unsigned char c) { return IsSpace(c); }).base();
+			return (b < e) ? std::string(b, e) : std::string();
 		}
 
 		std::string Cookie::ToSetCookieString() const {
@@ -376,8 +390,12 @@ namespace ytpp {
 
 				// 处理混合换行符 \r\n、\n 或 \r
 				if (end < rawHeaders.size()) {
-					if (rawHeaders[end] == '\r' && rawHeaders[end + 1] == '\n') start = end + 2;
-					else start = end + 1;
+					//if (rawHeaders[end] == '\r' && rawHeaders[end + 1] == '\n') start = end + 2;
+					//else start = end + 1;
+					if (rawHeaders[end] == '\r' && end + 1 < rawHeaders.size() && rawHeaders[end + 1] == '\n')
+						start = end + 2;
+					else
+						start = end + 1;
 				} else {
 					break;
 				}
@@ -409,8 +427,9 @@ namespace ytpp {
 						if (lowerKey == "path") cookie.path = value;
 						else if (lowerKey == "domain") cookie.domain = value;
 						else if (lowerKey == "expires") cookie.expires = value;
-						else if (lowerKey == "max-age") cookie.maxAge = std::stoi(value);
-						else if (lowerKey == "secure") cookie.secure = true;
+						else if (lowerKey == "max-age") {
+							if (auto v = ToInt64NoThrow(value)) cookie.maxAge = *v;
+						}else if (lowerKey == "secure") cookie.secure = true;
 						else if (lowerKey == "httponly") cookie.httpOnly = true;
 						else if (lowerKey == "samesite") cookie.sameSite = value;
 					}
@@ -443,6 +462,9 @@ namespace ytpp {
 		}
 
 		void HttpCookiesWrapper::SetCookie(const std::string& name, const std::string& value) {
+			auto n = Trim(name);
+			if (n.empty()) return; // 或者 throw / 返回bool
+
 			Cookie cookie { Trim(name), Trim(value) };
 			m_cookies[cookie.name] = cookie;
 		}
@@ -452,7 +474,8 @@ namespace ytpp {
 		}
 
 		bool HttpCookiesWrapper::IsExist(const std::string& name) const {
-			return m_cookies.find(name) != m_cookies.end();
+			auto key = Trim(name);
+			return m_cookies.find(key) != m_cookies.end();
 		}
 
 		void HttpCookiesWrapper::RemoveEmptyCookies()
@@ -467,7 +490,8 @@ namespace ytpp {
 		}
 
 		std::string HttpCookiesWrapper::GetCookieValue(const std::string& name) const {
-			auto it = m_cookies.find(name);
+			auto key = Trim(name);
+			auto it = m_cookies.find(key);
 			return (it != m_cookies.end()) ? it->second.value : "";
 		}
 
@@ -475,7 +499,7 @@ namespace ytpp {
 			std::vector<std::string> keys;
 			for (const auto& [k, _] : m_cookies) {
 				if (ignoreNull) {
-					if (_.value.empty()) break;
+					if (_.value.empty()) continue;
 				}
 				keys.push_back(k);
 			}
@@ -487,7 +511,7 @@ namespace ytpp {
 			bool first = true;
 			for (const auto& [k, cookie] : m_cookies) {
 				if (ignoreNull) {
-					if (cookie.value.empty()) break;
+					if (cookie.value.empty()) continue;
 				}
 				if (!first) out << "; ";
 				out << k << "=" << cookie.value;
@@ -500,7 +524,7 @@ namespace ytpp {
 			std::vector<std::string> result;
 			for (const auto& [_, cookie] : m_cookies) {
 				if (ignoreNull) {
-					if (cookie.value.empty()) break;
+					if (cookie.value.empty()) continue;
 				}
 				result.push_back("Set-Cookie: " + cookie.ToSetCookieString());
 			}
@@ -511,7 +535,7 @@ namespace ytpp {
 			std::vector<Cookie> all;
 			for (const auto& [_, cookie] : m_cookies) {
 				if (ignoreNull) {
-					if (cookie.value.empty()) break;
+					if (cookie.value.empty()) continue;
 				}
 				all.push_back(cookie);
 			}
@@ -528,6 +552,52 @@ namespace ytpp {
 		const long TIMEOUT = 25L; // 超时时间
 		const long LOW_SPEED_TIME = 4L; // 4 秒内速度小于 1 Byte/s 则认为超时
 		const long LOW_SPEED_LIMIT = 1L;
+
+		constexpr int HTTP_MAX_RETRY = 10;   // 可自行修改最大重试次数
+		constexpr int HTTP_RETRY_BASE_DELAY_MS = 500; // 基础退避时间
+
+		// 适用于GET等不发送请求体的请求
+		static bool IsRetryableError(CURLcode code)
+		{
+			switch (code)
+			{
+				case CURLE_COULDNT_CONNECT:
+				case CURLE_OPERATION_TIMEDOUT:
+				case CURLE_RECV_ERROR:
+				case CURLE_SEND_ERROR:
+				case CURLE_PROXY:
+				case CURLE_SSL_CONNECT_ERROR:
+				case CURLE_GOT_NOTHING:
+				case CURLE_PARTIAL_FILE:
+					return true;
+
+				default:
+					return false;
+			}
+		}
+		// 适用于POST等发送请求体的请求
+		static bool IsRetryablePostError(CURLcode code)
+		{
+			switch (code)
+			{
+				// 连接级错误（安全）
+				case CURLE_COULDNT_CONNECT:
+				case CURLE_OPERATION_TIMEDOUT:
+				case CURLE_PROXY:
+				case CURLE_SSL_CONNECT_ERROR:
+					return true;
+
+					// 以下不建议自动重试
+				case CURLE_SEND_ERROR:
+				case CURLE_RECV_ERROR:
+				case CURLE_PARTIAL_FILE:
+				case CURLE_GOT_NOTHING:
+					return false;
+
+				default:
+					return false;
+			}
+		}
 
 		/* 发送GET请求 */
 		HttpResponse HttpRequest::Get(
@@ -560,7 +630,7 @@ namespace ytpp {
 			curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
 			curl_easy_setopt(curl, CURLOPT_HEADERDATA, &ret.org_headers); // 获取响应头
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers); // 设置请求头
-			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);     // 自动跳转
+			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);     // 不自动跳转
 			curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);         // 最多跳转 10 次
 			curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1L);        // 自动更新 Referer
 			curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");    // 自动支持 gzip/deflate/br
@@ -604,6 +674,12 @@ namespace ytpp {
 			curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_ALL);
 			curl_easy_setopt(curl, CURLOPT_PROTOCOLS, CURLPROTO_ALL);  // 支持所有协议（HTTP/HTTPS/FTP/FILE等）
 
+			// ---- 连接稳定性配置 ----
+			curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
+			curl_easy_setopt(curl, CURLOPT_TCP_KEEPIDLE, 30L);
+			curl_easy_setopt(curl, CURLOPT_TCP_KEEPINTVL, 10L);
+
+
 			//curl_easy_setopt(curl, CURLOPT_HTTPHEADER, curl_slist_append(NULL, "Expect:"));
 
 			//curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -632,21 +708,70 @@ namespace ytpp {
 			}
 
 
-			CURLcode res = curl_easy_perform(curl);
+			//CURLcode res = curl_easy_perform(curl);
+			//ret.curl_code = res;
+			//if (res != CURLE_OK) {
+			//	ret.success = false;
+			//	ret.error = std::string(curl_easy_strerror(res));
+			//} else {
+			//	ret.success = true;
+			//	// 获取响应码
+			//	long response_code = 0;
+			//	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+			//	ret.code = response_code;
+			//	// 响应内容和响应头直接用回调函数获取了，这里不用处理
+			//	// 解析Cookies
+			//	ret.cookies.ParseFromSetCookieHeaders(HttpCookiesWrapper::ExtractSetCookieHeaders(ret.org_headers));
+			//	// 解析headers
+			//	ret.headers.ParseHeaders(ret.org_headers);
+			//}
+
+			CURLcode res = CURLE_OK;
+			int retry = 0;
+
+			while (retry <= HTTP_MAX_RETRY)
+			{
+				res = curl_easy_perform(curl);
+				ret.curl_code = res;
+
+				if (res == CURLE_OK)
+					break;
+
+				if (!IsRetryableError(res))
+					break;
+
+				if (retry >= HTTP_MAX_RETRY)
+					break;
+
+				retry++;
+
+				int delay = HTTP_RETRY_BASE_DELAY_MS * retry;
+				std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+				curl_easy_setopt(curl, CURLOPT_FRESH_CONNECT, 1L);
+				curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);
+
+				ret.content.clear();
+				ret.org_headers.clear();
+			}
+
 			ret.curl_code = res;
-			if (res != CURLE_OK) {
+
+			if (res != CURLE_OK)
+			{
 				ret.success = false;
 				ret.error = std::string(curl_easy_strerror(res));
-			} else {
+			} else
+			{
 				ret.success = true;
-				// 获取响应码
+
 				long response_code = 0;
 				curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 				ret.code = response_code;
-				// 响应内容和响应头直接用回调函数获取了，这里不用处理
-				// 解析Cookies
-				ret.cookies.ParseFromSetCookieHeaders(HttpCookiesWrapper::ExtractSetCookieHeaders(ret.org_headers));
-				// 解析headers
+
+				ret.cookies.ParseFromSetCookieHeaders(
+					HttpCookiesWrapper::ExtractSetCookieHeaders(ret.org_headers));
+
 				ret.headers.ParseHeaders(ret.org_headers);
 			}
 
@@ -691,7 +816,7 @@ namespace ytpp {
 			curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
 			curl_easy_setopt(curl, CURLOPT_HEADERDATA, &ret.org_headers); // 获取响应头
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers); // 设置请求头
-			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);     // 自动跳转
+			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);     // 不自动跳转
 			curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);         // 最多跳转 10 次
 			curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1L);        // 自动更新 Referer
 			curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");    // 自动支持 gzip/deflate/br
@@ -736,6 +861,12 @@ namespace ytpp {
 			curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_ALL);
 			curl_easy_setopt(curl, CURLOPT_PROTOCOLS, CURLPROTO_ALL);  // 支持所有协议（HTTP/HTTPS/FTP/FILE等）
 
+			// ---- 连接稳定性配置 ----
+			curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
+			curl_easy_setopt(curl, CURLOPT_TCP_KEEPIDLE, 30L);
+			curl_easy_setopt(curl, CURLOPT_TCP_KEEPINTVL, 10L);
+
+
 			//curl_easy_setopt(curl, CURLOPT_HTTPHEADER, curl_slist_append(NULL, "Expect:"));
 
 			//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L); // 调试
@@ -774,8 +905,51 @@ namespace ytpp {
 				lpfnCurlOptions(curl); // 调用回调函数，设置其他选项
 			}// Apple协议算法定制QQ：1282543064
 
-			CURLcode res = curl_easy_perform(curl);
-			ret.curl_code = res;
+			//CURLcode res = curl_easy_perform(curl);
+			//ret.curl_code = res;
+			//if (res != CURLE_OK) {
+			//	ret.success = false;
+			//	ret.error = "CURLcode:" + std::to_string(res) + ", " + std::string(curl_easy_strerror(res));
+			//} else {
+			//	ret.success = true;
+			//	// 获取响应码
+			//	long response_code = 0;
+			//	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+			//	ret.code = response_code;
+			//	// 响应内容和响应头直接用回调函数获取了，这里不用处理
+			//	// 解析Cookies
+			//	ret.cookies.ParseFromSetCookieHeaders(HttpCookiesWrapper::ExtractSetCookieHeaders(ret.org_headers));
+			//	// 解析headers
+			//	ret.headers.ParseHeaders(ret.org_headers);
+			//}
+
+			CURLcode res = CURLE_OK;
+			int retry = 0;
+			while (retry <= HTTP_MAX_RETRY)
+			{
+				res = curl_easy_perform(curl);
+				ret.curl_code = res;
+
+				if (res == CURLE_OK)
+					break;
+
+				if (!IsRetryablePostError(res))
+					break;
+
+				if (retry >= HTTP_MAX_RETRY)
+					break;
+
+				retry++;
+
+				int delay = HTTP_RETRY_BASE_DELAY_MS * retry;
+				std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+				curl_easy_setopt(curl, CURLOPT_FRESH_CONNECT, 1L);
+				curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);
+
+				ret.content.clear();
+				ret.org_headers.clear();
+			}
 			if (res != CURLE_OK) {
 				ret.success = false;
 				ret.error = "CURLcode:" + std::to_string(res) + ", " + std::string(curl_easy_strerror(res));
@@ -831,7 +1005,7 @@ namespace ytpp {
 			curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
 			curl_easy_setopt(curl, CURLOPT_HEADERDATA, &ret.org_headers); // 获取响应头
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers); // 设置请求头
-			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);     // 自动跳转
+			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);     // 不自动跳转
 			curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);         // 最多跳转 10 次
 			curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1L);        // 自动更新 Referer
 			curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");    // 自动支持 gzip/deflate/br
@@ -877,6 +1051,10 @@ namespace ytpp {
 			curl_easy_setopt(curl, CURLOPT_PROTOCOLS, CURLPROTO_ALL);  // 支持所有协议（HTTP/HTTPS/FTP/FILE等）
 
 
+			// ---- 连接稳定性配置 ----
+			curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
+			curl_easy_setopt(curl, CURLOPT_TCP_KEEPIDLE, 30L);
+			curl_easy_setopt(curl, CURLOPT_TCP_KEEPINTVL, 10L);
 
 			////curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L); // 调试
 			//curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -905,8 +1083,53 @@ namespace ytpp {
 				lpfnCurlOptions(curl); // 调用回调函数，设置其他选项
 			}
 
-			CURLcode res = curl_easy_perform(curl);
-			ret.curl_code = res;
+			//CURLcode res = curl_easy_perform(curl);
+			//ret.curl_code = res;
+			//if (res != CURLE_OK) {
+			//	ret.success = false;
+			//	ret.error = "CURLcode:" + std::to_string(res) + ", " + std::string(curl_easy_strerror(res));
+			//} else {
+			//	ret.success = true;
+			//	// 获取响应码
+			//	long response_code = 0;
+			//	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+			//	ret.code = response_code;
+			//	// 响应内容和响应头直接用回调函数获取了，这里不用处理
+			//	// 解析Cookies
+			//	ret.cookies.ParseFromSetCookieHeaders(HttpCookiesWrapper::ExtractSetCookieHeaders(ret.org_headers));
+			//	// 解析headers
+			//	ret.headers.ParseHeaders(ret.org_headers);
+			//}
+
+			CURLcode res = CURLE_OK;
+			int retry = 0;
+
+			while (retry <= HTTP_MAX_RETRY)
+			{
+				res = curl_easy_perform(curl);
+				ret.curl_code = res;
+
+				if (res == CURLE_OK)
+					break;
+
+				if (!IsRetryablePostError(res))
+					break;
+
+				if (retry >= HTTP_MAX_RETRY)
+					break;
+
+				retry++;
+
+				int delay = HTTP_RETRY_BASE_DELAY_MS * retry;
+				std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+				curl_easy_setopt(curl, CURLOPT_FRESH_CONNECT, 1L);
+				curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);
+
+				ret.content.clear();
+				ret.org_headers.clear();
+			}
+
 			if (res != CURLE_OK) {
 				ret.success = false;
 				ret.error = "CURLcode:" + std::to_string(res) + ", " + std::string(curl_easy_strerror(res));
@@ -962,7 +1185,7 @@ namespace ytpp {
 			curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
 			curl_easy_setopt(curl, CURLOPT_HEADERDATA, &ret.org_headers); // 获取响应头
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers); // 设置请求头
-			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);     // 自动跳转
+			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);     // 不自动跳转
 			curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);         // 最多跳转 10 次
 			curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1L);        // 自动更新 Referer
 			curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");    // 自动支持 gzip/deflate/br
@@ -1007,7 +1230,10 @@ namespace ytpp {
 			curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_ALL);
 			curl_easy_setopt(curl, CURLOPT_PROTOCOLS, CURLPROTO_ALL);  // 支持所有协议（HTTP/HTTPS/FTP/FILE等）
 
-
+			// ---- 连接稳定性配置 ----
+			curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
+			curl_easy_setopt(curl, CURLOPT_TCP_KEEPIDLE, 30L);
+			curl_easy_setopt(curl, CURLOPT_TCP_KEEPINTVL, 10L);
 
 			////curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L); // 调试
 			//curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -1036,8 +1262,54 @@ namespace ytpp {
 				lpfnCurlOptions(curl); // 调用回调函数，设置其他选项
 			}
 
-			CURLcode res = curl_easy_perform(curl);
-			ret.curl_code = res;
+			//CURLcode res = curl_easy_perform(curl);
+			//ret.curl_code = res;
+			//if (res != CURLE_OK) {
+			//	ret.success = false;
+			//	ret.error = "CURLcode:" + std::to_string(res) + ", " + std::string(curl_easy_strerror(res));
+			//} else {
+			//	ret.success = true;
+			//	// 获取响应码
+			//	long response_code = 0;
+			//	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+			//	ret.code = response_code;
+			//	// 响应内容和响应头直接用回调函数获取了，这里不用处理
+			//	// 解析Cookies
+			//	ret.cookies.ParseFromSetCookieHeaders(HttpCookiesWrapper::ExtractSetCookieHeaders(ret.org_headers));
+			//	// 解析headers
+			//	ret.headers.ParseHeaders(ret.org_headers);
+			//}
+
+
+			CURLcode res = CURLE_OK;
+			int retry = 0;
+
+			while (retry <= HTTP_MAX_RETRY)
+			{
+				res = curl_easy_perform(curl);
+				ret.curl_code = res;
+
+				if (res == CURLE_OK)
+					break;
+
+				if (!IsRetryablePostError(res))
+					break;
+
+				if (retry >= HTTP_MAX_RETRY)
+					break;
+
+				retry++;
+
+				int delay = HTTP_RETRY_BASE_DELAY_MS * retry;
+				std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+				curl_easy_setopt(curl, CURLOPT_FRESH_CONNECT, 1L);
+				curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);
+
+				ret.content.clear();
+				ret.org_headers.clear();
+			}
+
 			if (res != CURLE_OK) {
 				ret.success = false;
 				ret.error = "CURLcode:" + std::to_string(res) + ", " + std::string(curl_easy_strerror(res));
