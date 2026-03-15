@@ -630,7 +630,7 @@ namespace ytpp {
 			curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
 			curl_easy_setopt(curl, CURLOPT_HEADERDATA, &ret.org_headers); // 获取响应头
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers); // 设置请求头
-			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);     // 不自动跳转
+			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);     // 自动跳转
 			curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);         // 最多跳转 10 次
 			curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1L);        // 自动更新 Referer
 			curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");    // 自动支持 gzip/deflate/br
@@ -816,7 +816,7 @@ namespace ytpp {
 			curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
 			curl_easy_setopt(curl, CURLOPT_HEADERDATA, &ret.org_headers); // 获取响应头
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers); // 设置请求头
-			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);     // 不自动跳转
+			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);     // 自动跳转
 			curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);         // 最多跳转 10 次
 			curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1L);        // 自动更新 Referer
 			curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");    // 自动支持 gzip/deflate/br
@@ -1005,7 +1005,7 @@ namespace ytpp {
 			curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
 			curl_easy_setopt(curl, CURLOPT_HEADERDATA, &ret.org_headers); // 获取响应头
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers); // 设置请求头
-			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);     // 不自动跳转
+			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);     // 自动跳转
 			curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);         // 最多跳转 10 次
 			curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1L);        // 自动更新 Referer
 			curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");    // 自动支持 gzip/deflate/br
@@ -1185,7 +1185,7 @@ namespace ytpp {
 			curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
 			curl_easy_setopt(curl, CURLOPT_HEADERDATA, &ret.org_headers); // 获取响应头
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers); // 设置请求头
-			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);     // 不自动跳转
+			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);     // 自动跳转
 			curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);         // 最多跳转 10 次
 			curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1L);        // 自动更新 Referer
 			curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");    // 自动支持 gzip/deflate/br
