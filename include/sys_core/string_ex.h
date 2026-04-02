@@ -1,11 +1,22 @@
 #ifndef _STRINGEX_H_
 #define _STRINGEX_H_
 
+#define OUT
+
 #include <vector>
 #include <string>
 
 namespace ytpp {
 	namespace sys_core {
+		/// <summary>
+		/// 取中间文本
+		/// </summary>
+		/// <param name="src"></param>
+		/// <param name="left"></param>
+		/// <param name="right"></param>
+		/// <returns></returns>
+		std::string str_getBetween(const std::string& src, const std::string& left, const std::string& right, size_t startPos = 0, OUT size_t* lp_endPos = nullptr);
+
 		/// <summary>
 		/// 分割文本
 		/// </summary>

@@ -6,10 +6,49 @@
 #include <string>
 #include <algorithm>
 
-
-
 namespace ytpp {
     namespace sys_core {
+		/// <summary>
+		/// 取中间文本
+		/// </summary>
+		/// <param name="src"></param>
+		/// <param name="left"></param>
+		/// <param name="right"></param>
+		/// <returns></returns>
+		std::string str_getBetween(const std::string& src,
+			const std::string& left,
+			const std::string& right,
+			size_t startPos,
+			OUT size_t *lp_endPos)
+		{
+			if (startPos >= src.size())
+			{
+				if (lp_endPos) *lp_endPos = -1;
+				return "";
+			}
+
+			// 从 startPos 开始找左边界
+			size_t start = src.find(left, startPos);
+			if (start == std::string::npos)
+			{
+				if (lp_endPos) *lp_endPos = -1;
+				return "";
+			}
+
+			start += left.length();
+
+			// 从 left 之后找右边界
+			size_t end = src.find(right, start);
+			if (end == std::string::npos)
+			{
+				if (lp_endPos) *lp_endPos = -1;
+				return "";
+			}
+
+			if (lp_endPos) *lp_endPos = end;
+			return src.substr(start, end - start);
+		}
+
 		/// <summary>
 		/// 分割文本
 		/// </summary>
