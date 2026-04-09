@@ -171,6 +171,7 @@
     <ClInclude Include="..\..\include\.private\debug_tools.h" />
     <ClInclude Include="..\..\include\sys_core\disk_manipulation.h" />
     <ClInclude Include="..\..\include\sys_core\encoding.h" />
+    <ClInclude Include="..\..\include\sys_core\encryption.h" />
     <ClInclude Include="..\..\include\sys_core\hash.h" />
     <ClInclude Include="..\..\include\sys_core\machine_feature.h" />
     <ClInclude Include="..\..\include\sys_core\string_ex.h" />
@@ -180,6 +181,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\source\sys_core\disk_manipulation.cpp" />
     <ClCompile Include="..\..\source\sys_core\encoding.cpp" />
+    <ClCompile Include="..\..\source\sys_core\encryption.cpp" />
     <ClCompile Include="..\..\source\sys_core\hash.cpp" />
     <ClCompile Include="..\..\source\sys_core\machine_feature.cpp" />
     <ClCompile Include="..\..\source\sys_core\string_ex.cpp" />

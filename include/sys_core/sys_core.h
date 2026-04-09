@@ -19,6 +19,8 @@
 #include "sys_core/hash.h"
 //机器特征
 #include "sys_core/machine_feature.h"
+//加密解密
+#include "sys_core/encryption.h"
 
 
 

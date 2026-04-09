@@ -48,6 +48,9 @@
     <ClInclude Include="..\..\include\sys_core\hash.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\sys_core\encryption.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\source\sys_core\disk_manipulation.cpp">
@@ -66,6 +69,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="..\..\source\sys_core\hash.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\sys_core\encryption.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
