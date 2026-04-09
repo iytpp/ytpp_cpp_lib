@@ -511,7 +511,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalDependencies>curl/$(PlatformTarget)/$(Configuration)/libcurl.lib;curl/$(PlatformTarget)/$(Configuration)/zlib.lib</AdditionalDependencies>
+      <AdditionalDependencies>curl/$(PlatformTarget)/$(Configuration)/libcurl.lib;curl/$(PlatformTarget)/$(Configuration)/zlib.lib;ws2_32.lib;Crypt32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\third_party\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
@@ -551,7 +551,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalDependencies>curl/$(PlatformTarget)/$(Configuration)/libcurl.lib;curl/$(PlatformTarget)/$(Configuration)/zlib.lib</AdditionalDependencies>
+      <AdditionalDependencies>curl/$(PlatformTarget)/$(Configuration)/libcurl.lib;curl/$(PlatformTarget)/$(Configuration)/zlib.lib;ws2_32.lib;Crypt32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\third_party\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
