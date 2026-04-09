@@ -1,0 +1,63 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="源文件">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="头文件">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="资源文件">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="头文件\RPC-named-pip">
+      <UniqueIdentifier>{8c1400f2-742a-4789-a9cb-87d1b42838de}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源文件\RPC-named-pip">
+      <UniqueIdentifier>{e1f906b2-cb44-408d-bb3e-79fd9277c242}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\source\client-server\RPC-named-pip\RpcSecurity.cpp">
+      <Filter>源文件\RPC-named-pip</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\client-server\RPC-named-pip\NamedPipeRpcClient.cpp">
+      <Filter>源文件\RPC-named-pip</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\client-server\RPC-named-pip\NamedPipeRpcServer.cpp">
+      <Filter>源文件\RPC-named-pip</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\client-server\RPC-named-pip\RpcCommon.cpp">
+      <Filter>源文件\RPC-named-pip</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\client-server\RPC-named-pip\RpcLogger.cpp">
+      <Filter>源文件\RPC-named-pip</Filter>
+    </ClCompile>
+    <ClCompile Include="Examples_RPC-named-pip.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\include\client-server\RPC-named-pip\SampleStructs.h">
+      <Filter>头文件\RPC-named-pip</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\client-server\RPC-named-pip\NamedPipeRpcClient.h">
+      <Filter>头文件\RPC-named-pip</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\client-server\RPC-named-pip\NamedPipeRpcServer.h">
+      <Filter>头文件\RPC-named-pip</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\client-server\RPC-named-pip\RpcCommon.h">
+      <Filter>头文件\RPC-named-pip</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\client-server\RPC-named-pip\RpcLogger.h">
+      <Filter>头文件\RPC-named-pip</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\client-server\RPC-named-pip\RpcSecurity.h">
+      <Filter>头文件\RPC-named-pip</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

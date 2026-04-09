@@ -60,7 +60,8 @@ namespace ytpp {
 				VARIANT vtProp;
 				hr = pclsObj->Get(BSTR(std::wstring(field.begin(), field.end()).c_str()), 0, &vtProp, 0, 0);
 				if (SUCCEEDED(hr) && (vtProp.vt == VT_BSTR)) {
-					result << _bstr_t(vtProp.bstrVal);
+					//result << _bstr_t(vtProp.bstrVal); // C++20会报错
+					result << static_cast<const char*>(_bstr_t(vtProp.bstrVal)); // 从C++17升级到C++20，解决兼容性问题
 				}
 				VariantClear(&vtProp);
 				pclsObj->Release();
