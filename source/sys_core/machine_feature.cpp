@@ -28,7 +28,29 @@ namespace ytpp {
 			std::ostringstream result;
 
 			hr = CoInitializeEx(0, COINIT_MULTITHREADED);
-			if (FAILED(hr)) return "";
+			bool needCoUninitialize = false;
+			if (hr == S_OK)
+			{
+				// 当前线程第一次初始化 COM
+				needCoUninitialize = true;
+			}
+			else if (hr == S_FALSE)
+			{
+				// 当前线程已经初始化过 COM
+				// 这次调用仍然算成功，后面仍需配对 CoUninitialize
+				needCoUninitialize = true;
+			}
+			else if (hr == RPC_E_CHANGED_MODE)
+			{
+				// 当前线程已经被初始化成别的模型（通常是 STA）
+				// 对 DLL 场景来说，这不是致命错误，可以继续做 WMI
+				needCoUninitialize = false;
+			}
+			else
+			{
+				// 其他失败才是真失败
+				return "";
+			}
 
 			hr = CoInitializeSecurity(nullptr, -1, nullptr, nullptr,
 				RPC_C_AUTHN_LEVEL_DEFAULT, RPC_C_IMP_LEVEL_IMPERSONATE,
