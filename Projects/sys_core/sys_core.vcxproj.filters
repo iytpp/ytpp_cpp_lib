@@ -51,6 +51,9 @@
     <ClInclude Include="..\..\include\sys_core\encryption.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\sys_core\date_time.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\source\sys_core\disk_manipulation.cpp">
@@ -72,6 +75,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="..\..\source\sys_core\encryption.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\sys_core\date_time.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

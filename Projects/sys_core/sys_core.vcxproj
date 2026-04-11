@@ -169,6 +169,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\include\.common\compatibility.h" />
     <ClInclude Include="..\..\include\.private\debug_tools.h" />
+    <ClInclude Include="..\..\include\sys_core\date_time.h" />
     <ClInclude Include="..\..\include\sys_core\disk_manipulation.h" />
     <ClInclude Include="..\..\include\sys_core\encoding.h" />
     <ClInclude Include="..\..\include\sys_core\encryption.h" />
@@ -179,6 +180,7 @@
     <ClInclude Include="..\..\include\sys_core\sys_processing.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\source\sys_core\date_time.cpp" />
     <ClCompile Include="..\..\source\sys_core\disk_manipulation.cpp" />
     <ClCompile Include="..\..\source\sys_core\encoding.cpp" />
     <ClCompile Include="..\..\source\sys_core\encryption.cpp" />

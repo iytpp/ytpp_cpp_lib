@@ -21,7 +21,12 @@
 #include "sys_core/machine_feature.h"
 //加密解密
 #include "sys_core/encryption.h"
+//日期时间
+#include "sys_core/date_time.h"
 
+
+using namespace ytpp::sys_core::date_time; // 日期时间
+using namespace ytpp::sys_core::encryption; // 加密解密
 
 
 #endif // !_SYS_CORE_H_
