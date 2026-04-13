@@ -383,7 +383,7 @@
     </Link>
     <Lib>
       <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\third_party\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>jsoncpp/$(PlatformTarget)/$(Configuration)/jsoncpp_static.lib</AdditionalDependencies>
+      <AdditionalDependencies>json/$(PlatformTarget)/$(Configuration)/jsoncpp.lib</AdditionalDependencies>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -406,7 +406,7 @@
     </Link>
     <Lib>
       <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\third_party\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>jsoncpp/$(PlatformTarget)/$(Configuration)/jsoncpp_static.lib</AdditionalDependencies>
+      <AdditionalDependencies>json/$(PlatformTarget)/$(Configuration)/jsoncpp.lib</AdditionalDependencies>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -534,7 +534,7 @@
     </Link>
     <Lib>
       <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\third_party\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>jsoncpp/$(PlatformTarget)/$(Configuration)/jsoncpp_static.lib</AdditionalDependencies>
+      <AdditionalDependencies>json/$(PlatformTarget)/$(Configuration)/jsoncpp.lib</AdditionalDependencies>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -557,7 +557,7 @@
     </Link>
     <Lib>
       <AdditionalLibraryDirectories>$(YTPP_CPP_LIB)\third_party\static_lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>jsoncpp/$(PlatformTarget)/$(Configuration)/jsoncpp_static.lib</AdditionalDependencies>
+      <AdditionalDependencies>json/$(PlatformTarget)/$(Configuration)/jsoncpp.lib</AdditionalDependencies>
     </Lib>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
