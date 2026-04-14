@@ -398,6 +398,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\include\.common;$(YTPP_CPP_LIB)\include\.private;$(YTPP_CPP_LIB)\include;$(YTPP_CPP_LIB)\third_party\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -462,6 +463,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(YTPP_CPP_LIB)\include\.common;$(YTPP_CPP_LIB)\include\.private;$(YTPP_CPP_LIB)\include;$(YTPP_CPP_LIB)\third_party\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>

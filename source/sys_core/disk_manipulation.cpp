@@ -1,4 +1,5 @@
 ﻿#include "sys_core/disk_manipulation.h"
+#include "sys_core/encoding.h"
 
 #include ".private/debug_tools.h" //用于调试的工具
 
@@ -7,6 +8,69 @@
 namespace ytpp {
     namespace sys_core
 	{
+		std::string GetExeDirA_UTF8(bool withSlash)
+		{
+			std::vector<wchar_t> buffer(1024);
+
+			DWORD len = GetModuleFileNameW(nullptr, buffer.data(), (DWORD)buffer.size());
+			if (len == 0)
+				return "";
+
+			std::wstring fullPath(buffer.data(), len);
+
+			size_t pos = fullPath.find_last_of(L"\\/");
+			if (pos == std::wstring::npos)
+				return "";
+
+			std::wstring dir;
+			if (withSlash)
+				dir = fullPath.substr(0, pos + 1);
+			else
+				dir = fullPath.substr(0, pos);
+
+			return encoding_wstring_to_UTF8(dir);
+		}
+
+
+
+		std::string GetExeDirA(bool withSlash = true)
+		{
+			char path[MAX_PATH] = { 0 };
+			GetModuleFileNameA(NULL, path, MAX_PATH);
+
+			std::string fullPath = path;
+
+			size_t pos = fullPath.find_last_of("\\/");
+			if (pos == std::string::npos)
+				return "";
+
+			if (withSlash)
+				return fullPath.substr(0, pos + 1);
+			else
+				return fullPath.substr(0, pos);
+		}
+
+
+
+		std::wstring GetExeDirW(bool withSlash)
+		{
+			std::vector<wchar_t> buffer(1024);
+			DWORD len = GetModuleFileNameW(nullptr, buffer.data(), (DWORD)buffer.size());
+
+			if (len == 0)
+				return L"";
+
+			std::wstring fullPath(buffer.data(), len);
+
+			size_t pos = fullPath.find_last_of(L"\\/");
+			if (pos == std::wstring::npos)
+				return L"";
+
+			if (withSlash)
+				return fullPath.substr(0, pos + 1);
+			else
+				return fullPath.substr(0, pos);
+		}
 
 		bool file_isExistsA(_In_ const string & fileName)
 		{

@@ -11,22 +11,48 @@
 #define file_isExists file_isExistsW
 #define write_to_file write_to_fileW
 #define write_resource_file write_resource_fileW
+#define GetExeDir GetExeDirW
 
 #else /* ANSI */
 
 #define file_isExists file_isExistsA
 #define write_to_file write_to_fileA
 #define write_resource_file write_resource_fileA
+#define GetExeDir GetExeDirA
 
 #endif /* _UNICODE */
 
 namespace ytpp {
     namespace sys_core 
 	{
-
 		using namespace std;
-
 		//======================================================================
+
+		/*
+		* @brief 获取当前可执行文件路径，UTF8版本支持长路径
+		* @brief 类似于易语言中的 "取运行目录" 函数
+		* @param [in] withSlash : 是否结尾有反斜杠
+		* @return 返回当前可执行文件路径，默认结尾有反斜杠，可通过参数控制
+		*/
+		std::string GetExeDirA_UTF8(bool withSlash = true);
+
+		/*
+		* @brief 获取当前可执行文件路径，ANSI版本不支持长路径
+		* @brief 类似于易语言中的 "取运行目录" 函数
+		* @param [in] withSlash : 是否结尾有反斜杠
+		* @return 返回当前可执行文件路径，默认结尾有反斜杠，可通过参数控制
+		*/
+		std::string GetExeDirA(bool withSlash = true);
+
+		/*
+		* @brief 获取当前可执行文件路径
+		* @brief 类似于易语言中的 "取运行目录" 函数
+		* @param [in] withSlash : 是否结尾有反斜杠
+		* @return 返回当前可执行文件路径，默认结尾有反斜杠，可通过参数控制
+		*/
+		std::wstring GetExeDirW(bool withSlash = true);
+
+
 		/*
 		* @brief 判断文件是否存在
 		* @brief 类似于易语言中的 "文件是否存在" 函数
