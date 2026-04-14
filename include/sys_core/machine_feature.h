@@ -1,4 +1,4 @@
-#ifndef _MACHINE_FEATURE_H_
+ï»¿#ifndef _MACHINE_FEATURE_H_
 #define _MACHINE_FEATURE_H_
 
 #include <string>
@@ -8,7 +8,7 @@ namespace ytpp {
 	namespace sys_core {
 
 		/// <summary>
-		/// »ñÈ¡»úÆ÷Âë
+		/// è·å–æœºå™¨ç 
 		/// </summary>
 		/// <returns></returns>
 		std::string get_machineCode(

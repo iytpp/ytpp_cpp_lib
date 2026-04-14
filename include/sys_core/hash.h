@@ -1,4 +1,4 @@
-#ifndef _HASH_H_
+ï»¿#ifndef _HASH_H_
 #define _HASH_H_
 
 #include <string>
@@ -14,7 +14,7 @@ namespace ytpp {
 		};
 
 		/// <summary>
-		/// SHA256¼ÆËã
+		/// SHA256è®¡ç®—
 		/// </summary>
 		/// <param name="input"></param>
 		/// <returns></returns>

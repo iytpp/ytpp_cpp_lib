@@ -1,4 +1,4 @@
-//¼æÈÝ WideChar ºÍ MultiByte
+ï»¿//å…¼å®¹ WideChar å’Œ MultiByte
 #ifdef _UNICODE
 
 #ifndef _T
