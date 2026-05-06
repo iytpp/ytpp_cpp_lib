@@ -180,6 +180,14 @@ namespace ytpp {
 #pragma region HttpRequest
 
 		/// <summary>
+		/// 自定义数据结构体，主要用于传递给自定义封装的数据参数
+		/// </summary>
+		struct PrivateData {
+			int http_max_retry = 3; // 当请求出现错误时，最大重试次数
+			int http_retry_base_delay_ms = 500; // 重试间隔，单位毫秒
+		};
+
+		/// <summary>
 		/// HTTP响应数据结构体
 		/// </summary>
 		struct HttpResponse {

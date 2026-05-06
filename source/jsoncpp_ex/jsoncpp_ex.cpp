@@ -3,7 +3,7 @@
 
 
 namespace ytpp {
-	namespace json
+	namespace json_ex
 	{
 		std::string json_toString(_In_ const Json::Value & value)
 		{

@@ -33,7 +33,7 @@ namespace ytpp {
 
 
 
-		std::string GetExeDirA(bool withSlash = true)
+		std::string GetExeDirA(bool withSlash)
 		{
 			char path[MAX_PATH] = { 0 };
 			GetModuleFileNameA(NULL, path, MAX_PATH);

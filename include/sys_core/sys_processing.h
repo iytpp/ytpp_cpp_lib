@@ -20,10 +20,46 @@
 
 #endif /* _UNICODE */
 
+/* 全局唯一标志封装类，可用于限制单例 */
+namespace ytpp::sys_core {
+	class SingleInstanceGuard
+	{
+	public:
+		enum class Namespace
+		{
+			DefaultLocal, // 不加前缀（默认当前 Session）
+			Local,        // Local\\xxx
+			Global        // Global\\xxx
+		};
+
+	public:
+		SingleInstanceGuard(const std::wstring& appName,
+			Namespace ns = Namespace::Local);
+
+		~SingleInstanceGuard();
+
+		// 禁止拷贝
+		SingleInstanceGuard(const SingleInstanceGuard&) = delete;
+		SingleInstanceGuard& operator=(const SingleInstanceGuard&) = delete;
+
+		bool isFirstInstance() const;
+		bool isValid() const;
+		DWORD lastError() const;
+
+	private:
+		static std::wstring buildMutexName(const std::wstring& name, Namespace ns);
+
+	private:
+		HANDLE m_mutex = nullptr;
+		bool m_isFirstInstance = false;
+		DWORD m_lastError = ERROR_SUCCESS;
+	};
+}
+
+
 namespace ytpp {
 	namespace sys_core {
 		using namespace std;
-
 
 
 		/*

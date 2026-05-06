@@ -6,6 +6,7 @@
 #include <vector>
 #include <algorithm>
 #include <cctype>
+#include <iostream>
 using namespace std;
 
 #include <curl/curl.h>
@@ -14,6 +15,11 @@ using namespace std;
 #pragma comment(lib, "Crypt32.lib")
 #pragma comment(lib, "ws2_32.lib")
 
+#ifdef _DEBUG
+	#define COUTDEBUG
+#else
+	#define COUTDEBUG /##/
+#endif
 
 namespace ytpp {
 	namespace curl_ex {
@@ -553,8 +559,10 @@ namespace ytpp {
 		const long LOW_SPEED_TIME = 4L; // 4 秒内速度小于 1 Byte/s 则认为超时
 		const long LOW_SPEED_LIMIT = 1L;
 
-		constexpr int HTTP_MAX_RETRY = 10;   // 可自行修改最大重试次数
-		constexpr int HTTP_RETRY_BASE_DELAY_MS = 500; // 基础退避时间
+		constexpr int DEF_HTTP_MAX_RETRY = 3;   // 默认最大重试次数
+		constexpr int DEF_HTTP_RETRY_BASE_DELAY_MS = 500; // 默认基础退避时间
+		int HTTP_MAX_RETRY = DEF_HTTP_MAX_RETRY;   // 最大重试次数
+		int HTTP_RETRY_BASE_DELAY_MS = DEF_HTTP_RETRY_BASE_DELAY_MS; // 基础退避时间
 
 		// 适用于GET等不发送请求体的请求
 		static bool IsRetryableError(CURLcode code)
@@ -562,7 +570,7 @@ namespace ytpp {
 			switch (code)
 			{
 				case CURLE_COULDNT_CONNECT:
-				case CURLE_OPERATION_TIMEDOUT:
+				//case CURLE_OPERATION_TIMEDOUT:
 				case CURLE_RECV_ERROR:
 				case CURLE_SEND_ERROR:
 				case CURLE_PROXY:
@@ -582,7 +590,7 @@ namespace ytpp {
 			{
 				// 连接级错误（安全）
 				case CURLE_COULDNT_CONNECT:
-				case CURLE_OPERATION_TIMEDOUT:
+				//case CURLE_OPERATION_TIMEDOUT:
 				case CURLE_PROXY:
 				case CURLE_SSL_CONNECT_ERROR:
 					return true;
@@ -607,6 +615,7 @@ namespace ytpp {
 			_In_ bool ssl /*= true*/,
 			_In_ std::function<void(CURL*)> lpfnCurlOptions /*= nullptr*/)
 		{
+			//COUTDEBUG std::cout << "\nGET curl_ex V2.4" << std::endl;
 			HttpResponse ret;
 
 			CURL* curl = curl_easy_init();
@@ -707,6 +716,23 @@ namespace ytpp {
 				lpfnCurlOptions(curl); // 调用回调函数，设置其他选项
 			}
 
+			// 获取自定义数据
+			PrivateData* private_data = NULL;
+			curl_easy_getinfo(curl, CURLINFO_PRIVATE, &private_data);
+			if (private_data != NULL) {
+				if (private_data->http_max_retry >= 0) {
+					HTTP_MAX_RETRY = private_data->http_max_retry;
+				} else {
+					HTTP_MAX_RETRY = DEF_HTTP_MAX_RETRY;
+				}
+				//---
+				if (private_data->http_retry_base_delay_ms >= 0) {
+					HTTP_RETRY_BASE_DELAY_MS = private_data->http_retry_base_delay_ms;
+				} else {
+					HTTP_RETRY_BASE_DELAY_MS = DEF_HTTP_RETRY_BASE_DELAY_MS;
+				}
+			}
+
 
 			//CURLcode res = curl_easy_perform(curl);
 			//ret.curl_code = res;
@@ -753,6 +779,8 @@ namespace ytpp {
 
 				ret.content.clear();
 				ret.org_headers.clear();
+
+				COUTDEBUG std::cout << "GET Start Next Retry，Retry Count：" << retry << std::endl;
 			}
 
 			ret.curl_code = res;
@@ -903,7 +931,27 @@ namespace ytpp {
 
 			if (lpfnCurlOptions) {
 				lpfnCurlOptions(curl); // 调用回调函数，设置其他选项
-			}// Apple协议算法定制QQ：1282543064
+			}
+
+			// 获取自定义数据
+			PrivateData* private_data = NULL;
+			curl_easy_getinfo(curl, CURLINFO_PRIVATE, &private_data);
+			if (private_data != NULL) {
+				if (private_data->http_max_retry >= 0) {
+					HTTP_MAX_RETRY = private_data->http_max_retry;
+				} else {
+					HTTP_MAX_RETRY = DEF_HTTP_MAX_RETRY;
+				}
+				//---
+				if (private_data->http_retry_base_delay_ms >= 0) {
+					HTTP_RETRY_BASE_DELAY_MS = private_data->http_retry_base_delay_ms;
+				} else {
+					HTTP_RETRY_BASE_DELAY_MS = DEF_HTTP_RETRY_BASE_DELAY_MS;
+				}
+			}
+			
+			
+			// Apple协议算法定制QQ：1282543064
 
 			//CURLcode res = curl_easy_perform(curl);
 			//ret.curl_code = res;
@@ -949,6 +997,8 @@ namespace ytpp {
 
 				ret.content.clear();
 				ret.org_headers.clear();
+
+				COUTDEBUG std::cout << "POST Start Next Retry，Retry Count：" << retry << std::endl;
 			}
 			if (res != CURLE_OK) {
 				ret.success = false;
@@ -1081,6 +1131,23 @@ namespace ytpp {
 
 			if (lpfnCurlOptions) {
 				lpfnCurlOptions(curl); // 调用回调函数，设置其他选项
+			}
+
+			// 获取自定义数据
+			PrivateData* private_data = NULL;
+			curl_easy_getinfo(curl, CURLINFO_PRIVATE, &private_data);
+			if (private_data != NULL) {
+				if (private_data->http_max_retry >= 0) {
+					HTTP_MAX_RETRY = private_data->http_max_retry;
+				} else {
+					HTTP_MAX_RETRY = DEF_HTTP_MAX_RETRY;
+				}
+				//---
+				if (private_data->http_retry_base_delay_ms >= 0) {
+					HTTP_RETRY_BASE_DELAY_MS = private_data->http_retry_base_delay_ms;
+				} else {
+					HTTP_RETRY_BASE_DELAY_MS = DEF_HTTP_RETRY_BASE_DELAY_MS;
+				}
 			}
 
 			//CURLcode res = curl_easy_perform(curl);
@@ -1260,6 +1327,23 @@ namespace ytpp {
 
 			if (lpfnCurlOptions) {
 				lpfnCurlOptions(curl); // 调用回调函数，设置其他选项
+			}
+
+			// 获取自定义数据
+			PrivateData* private_data = NULL;
+			curl_easy_getinfo(curl, CURLINFO_PRIVATE, &private_data);
+			if (private_data != NULL) {
+				if (private_data->http_max_retry >= 0) {
+					HTTP_MAX_RETRY = private_data->http_max_retry;
+				} else {
+					HTTP_MAX_RETRY = DEF_HTTP_MAX_RETRY;
+				}
+				//---
+				if (private_data->http_retry_base_delay_ms >= 0) {
+					HTTP_RETRY_BASE_DELAY_MS = private_data->http_retry_base_delay_ms;
+				} else {
+					HTTP_RETRY_BASE_DELAY_MS = DEF_HTTP_RETRY_BASE_DELAY_MS;
+				}
 			}
 
 			//CURLcode res = curl_easy_perform(curl);

@@ -2,6 +2,69 @@
 
 #include ".private/debug_tools.h" //用于调试的工具
 
+
+namespace ytpp::sys_core {
+	SingleInstanceGuard::SingleInstanceGuard(const std::wstring& appName,
+		Namespace ns)
+	{
+		std::wstring mutexName = buildMutexName(appName, ns);
+
+		m_mutex = CreateMutexW(nullptr, TRUE, mutexName.c_str());
+		m_lastError = GetLastError();
+
+		if (!m_mutex)
+		{
+			m_isFirstInstance = false;
+			return;
+		}
+
+		m_isFirstInstance = (m_lastError != ERROR_ALREADY_EXISTS);
+	}
+
+	SingleInstanceGuard::~SingleInstanceGuard()
+	{
+		if (m_mutex)
+		{
+			ReleaseMutex(m_mutex);
+			CloseHandle(m_mutex);
+			m_mutex = nullptr;
+		}
+	}
+
+	bool SingleInstanceGuard::isFirstInstance() const
+	{
+		return m_isFirstInstance;
+	}
+
+	bool SingleInstanceGuard::isValid() const
+	{
+		return m_mutex != nullptr;
+	}
+
+	DWORD SingleInstanceGuard::lastError() const
+	{
+		return m_lastError;
+	}
+
+	std::wstring SingleInstanceGuard::buildMutexName(const std::wstring& name,
+		Namespace ns)
+	{
+		switch (ns)
+		{
+		case Namespace::DefaultLocal:
+			return name;
+
+		case Namespace::Local:
+			return L"Local\\" + name;
+
+		case Namespace::Global:
+			return L"Global\\" + name;
+		}
+
+		return name;
+	}
+}
+
 namespace ytpp {
 	namespace sys_core {
 

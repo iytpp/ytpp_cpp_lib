@@ -5,7 +5,7 @@
 #include <string>
 
 namespace ytpp {
-	namespace json
+	namespace json_ex
 	{
 
 		using namespace std;
