@@ -4,10 +4,27 @@
 #include ".private/debug_tools.h" //用于调试的工具
 
 #include <iostream>
+#include <filesystem>
 
 namespace ytpp {
     namespace sys_core
 	{
+		std::filesystem::path GetExePath()
+		{
+			wchar_t buffer[MAX_PATH]{};
+
+			DWORD length = GetModuleFileNameW(
+				nullptr,
+				buffer,
+				MAX_PATH
+			);
+
+			if (length == 0)
+				return {};
+
+			return std::filesystem::path(buffer);
+		}
+
 		std::string GetExeDirA_UTF8(bool withSlash)
 		{
 			std::vector<wchar_t> buffer(1024);

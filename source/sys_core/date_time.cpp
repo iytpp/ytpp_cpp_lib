@@ -577,7 +577,7 @@ namespace ytpp::sys_core::date_time {
 			if (!hSession)
 				throw std::runtime_error("WinHttpOpen failed.");
 
-			const int timeoutMs = 5000;
+			const int timeoutMs = 30000;
 			WinHttpSetTimeouts(hSession, timeoutMs, timeoutMs, timeoutMs, timeoutMs);
 
 			hConnect = WinHttpConnect(

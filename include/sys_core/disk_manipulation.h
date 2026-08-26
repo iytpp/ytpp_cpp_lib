@@ -29,11 +29,19 @@ namespace ytpp {
 		//======================================================================
 
 		/*
+		* @brief 获取当前可执行文件路径全路径，可通过GetExePath().parent_path()获取exe所在目录，可通过GetExePath().filename()获取exe文件名。
+		* @brief 如果要获得不加引号的路径，可访问string()函数，例如GetExePath().parent_path().string()
+		* @return 返回当前可执行文件的全路径
+		*/
+		std::filesystem::path GetExePath();
+
+		/*
 		* @brief 获取当前可执行文件路径，UTF8版本支持长路径
 		* @brief 类似于易语言中的 "取运行目录" 函数
 		* @param [in] withSlash : 是否结尾有反斜杠
 		* @return 返回当前可执行文件路径，默认结尾有反斜杠，可通过参数控制
 		*/
+		[[deprecated("Use GetExePath() instead")]]
 		std::string GetExeDirA_UTF8(bool withSlash = true);
 
 		/*
@@ -42,6 +50,7 @@ namespace ytpp {
 		* @param [in] withSlash : 是否结尾有反斜杠
 		* @return 返回当前可执行文件路径，默认结尾有反斜杠，可通过参数控制
 		*/
+		[[deprecated("Use GetExePath() instead")]]
 		std::string GetExeDirA(bool withSlash = true);
 
 		/*
@@ -50,6 +59,7 @@ namespace ytpp {
 		* @param [in] withSlash : 是否结尾有反斜杠
 		* @return 返回当前可执行文件路径，默认结尾有反斜杠，可通过参数控制
 		*/
+		[[deprecated("Use GetExePath() instead")]]
 		std::wstring GetExeDirW(bool withSlash = true);
 
 
