@@ -7,6 +7,15 @@
 namespace ytpp {
 	namespace sys_core {
 
+
+		/// <summary>
+		/// 用wmi进行查询
+		/// </summary>
+		/// <param name="wql"></param>
+		/// <param name="field"></param>
+		/// <returns></returns>
+		std::string wmi_query(const std::string& wql, const std::string& field);
+
 		/// <summary>
 		/// 获取机器码
 		/// </summary>
@@ -21,6 +30,26 @@ namespace ytpp {
 			bool mac = true,
 			HashType hashType = HashType::SHA256
 		);
+
+		/// <summary>
+		/// 获取机器特征
+		/// </summary>
+		/// <returns></returns>
+		std::string get_machine_features(bool cup, bool baseBoard, bool diskDrive, bool gpu, bool physicalMemory, bool mac);
+
+
+		/// <summary>
+		/// 获取用户名
+		/// </summary>
+		/// <returns></returns>
+		std::string get_usernameA();
+
+
+		/// <summary>
+		/// 获取用户名
+		/// </summary>
+		/// <returns></returns>
+		std::wstring get_usernameW();
 	
 	
 	}

@@ -132,6 +132,33 @@ namespace ytpp {
 		}
 
 
+		// A版本：GetUserNameA，返回 std::string
+		std::string get_usernameA()
+		{
+			DWORD bufSize = 256;
+			char szBuffer[256]{};
+
+			if (!::GetUserNameA(szBuffer, &bufSize))
+			{
+				return "UserNameA failed";
+			}
+			return std::string(szBuffer);
+		}
+
+		// W版本：GetUserNameW，返回 std::wstring
+		std::wstring get_usernameW()
+		{
+			DWORD bufSize = 256;
+			WCHAR szBuffer[256]{};
+
+			if (!::GetUserNameW(szBuffer, &bufSize))
+			{
+				return L"UserNameA failed";
+			}
+			return std::wstring(szBuffer);
+		}
+
+
 
 	}
 }
