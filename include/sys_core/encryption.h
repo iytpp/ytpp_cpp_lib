@@ -131,6 +131,8 @@ CipherPack AES_128_GCM_Encrypt(const Bytes& plaintext, const Bytes& key, const B
 Bytes AES_128_GCM_Decrypt(const CipherPack& pack, const Bytes& key, const Bytes& aad = {});
 CipherPack AES_256_GCM_Encrypt(const Bytes& plaintext, const Bytes& key, const Bytes& iv, const Bytes& aad = {});
 Bytes AES_256_GCM_Decrypt(const CipherPack& pack, const Bytes& key, const Bytes& aad = {});
+std::string AES_Encrypt(std::string text, std::string password);
+std::string AES_Decrypt(std::string text, std::string password);
 CipherPack ChaCha20_Poly1305_Encrypt(const Bytes& plaintext, const Bytes& key, const Bytes& iv, const Bytes& aad = {});
 Bytes ChaCha20_Poly1305_Decrypt(const CipherPack& pack, const Bytes& key, const Bytes& aad = {});
 #if !defined(OPENSSL_NO_SM4)

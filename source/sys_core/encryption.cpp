@@ -1177,6 +1177,81 @@ Bytes AES_256_GCM_Decrypt(const CipherPack& pack, const Bytes& key, const Bytes&
     return AeadDecrypt(EVP_aes_256_gcm(), pack.ciphertext, key, pack.iv, aad, pack.tag);
 }
 
+std::string AES_Encrypt(std::string text, std::string password)
+{
+	// password -> 32字节 AES-256 Key
+	Bytes key = SHA256(password);
+
+	// 每次随机生成 12 字节 GCM IV
+	Bytes iv = RandomBytes(12);
+
+	// string -> Bytes
+	Bytes plaintext(text.begin(), text.end());
+
+	CipherPack pack = AES_256_GCM_Encrypt(
+		plaintext,
+		key,
+		iv
+	);
+
+	// 最终格式：
+	// IV(12) + TAG(16) + Ciphertext
+	Bytes result;
+
+	result.reserve(
+		pack.iv.size() +
+		pack.tag.size() +
+		pack.ciphertext.size()
+	);
+
+	result.insert(result.end(), pack.iv.begin(), pack.iv.end());
+	result.insert(result.end(), pack.tag.begin(), pack.tag.end());
+	result.insert(result.end(), pack.ciphertext.begin(), pack.ciphertext.end());
+
+	return Base64Encode(result);
+}
+
+std::string AES_Decrypt(std::string text, std::string password)
+{
+	Bytes data = Base64Decode(text);
+
+	constexpr std::size_t IV_SIZE = 12;
+	constexpr std::size_t TAG_SIZE = 16;
+
+	if (data.size() < IV_SIZE + TAG_SIZE)
+		throw std::runtime_error("Invalid AES encrypted data");
+
+	// password -> 相同的 32字节 AES-256 Key
+	Bytes key = SHA256(password);
+
+	CipherPack pack;
+
+	pack.iv = Bytes(
+		data.begin(),
+		data.begin() + IV_SIZE
+	);
+
+	pack.tag = Bytes(
+		data.begin() + IV_SIZE,
+		data.begin() + IV_SIZE + TAG_SIZE
+	);
+
+	pack.ciphertext = Bytes(
+		data.begin() + IV_SIZE + TAG_SIZE,
+		data.end()
+	);
+
+	Bytes plaintext = AES_256_GCM_Decrypt(
+		pack,
+		key
+	);
+
+	return std::string(
+		plaintext.begin(),
+		plaintext.end()
+	);
+}
+
 CipherPack ChaCha20_Poly1305_Encrypt(const Bytes& plaintext, const Bytes& key, const Bytes& iv, const Bytes& aad) {
     EnsureKeyLength(key, 32, "ChaCha20_Poly1305_Encrypt");
     Ensure(!iv.empty(), "ChaCha20_Poly1305_Encrypt: iv must not be empty");
