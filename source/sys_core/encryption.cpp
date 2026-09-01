@@ -24,6 +24,7 @@
 #include <sstream>
 #include <string>
 #include <utility>
+#include <iostream>
 
 namespace ytpp::sys_core::encryption {
 
