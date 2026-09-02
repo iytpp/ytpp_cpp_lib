@@ -1,9 +1,9 @@
-# curl_ex v4.2.5 使用手册
+# curl_ex v4.2.6 使用手册
 
 > 本文档只对应以下源码：
 >
-> - `curl_ex_v4.2.5.h`
-> - `curl_ex_v4.2.5.cpp`
+> - `curl_ex_v4.2.6.h`
+> - `curl_ex_v4.2.6.cpp`
 >
 > 不要与旧版 `curl_ex.h`、`curl_ex.cpp`、`curl_ex_v4.h` 或之前未带版本号的示例混用。
 
@@ -11,31 +11,26 @@
 
 ## 1. 项目定位
 
-## 1.1 V4.2.5 重要变更与生产语义
+## 1.1 V4.2.6 重要变更与生产语义
 
-V4.2.5 是在 V4.2.4 基础上继续进行完整生产级审计后的修订版。V4.2.4 已经具备 `Initialize()`、认证刷新重放、异步完成分发、Cookie 隔离、输入终检、响应资源上限和临时文件下载提交等基础生产语义；V4.2.5 **不重复把这些旧能力算作新增功能**，本次升级重点修复以下在重新审计中实际确认的问题：
+V4.2.6 是把 V4.2.5 当作陌生实现重新进行生产级审计后的修订版。本次不是功能扩张，而是继续收紧默认安全边界、修复配置与日志语义漂移，并补齐可复现回归。V4.2.5 已有的认证重放、异步完成分发、资源上限、下载提交、重试副作用保护等能力继续保留。
 
-- Debug 安全边界收紧：`DebugOptions::enabled` 成为真正的日志总开关；`curlVerbose=true` 不再使用 libcurl 原始 stderr verbose，而是经过封装层过滤回调，Header/URL 继续脱敏，原始 Body/TLS record 不写入日志。Debug 格式化、脱敏和 logger 异常全部按旁路能力兜底，不能逃入同步/异步请求控制流。
-- `ApiKeyAuthProvider` 会自动把 Header/Query 形式的自定义凭据名称登记为敏感字段；自定义 Query API Key 不再进入 Metrics 明文。`Location`、`Content-Location`、`Referer`、`Destination`、`Link`、`Refresh` 等 URL-bearing Header 也会执行 URL 脱敏。
-- 敏感凭据与自动重定向改为“首跳正常、真实出现 3xx 才 fail-closed”：自定义敏感 Header、`RequestOptions::cookies` 和 `pinnedPublicKey` 不再因为默认 `follow=true` 就预先拒绝普通请求；但一旦首跳返回可重定向目标，默认会在发送下一跳前停止。只有明确接受相应风险时才开启对应 override。
-- libcurl 8.13.0 之前的 `CURLOPT_CUSTOMREQUEST + FOLLOWLOCATION` 无法可靠服从 301/302/303 的 Method 转换语义。V4.2.5 在旧运行库上允许首跳正常执行，但真实出现重定向时会在下一跳前 fail-closed，避免把 PATCH/其他自定义 Method 错误重放到目标地址；8.13.0+ 使用 `CURLFOLLOW_OBEYCODE`，并同时检查运行期 libcurl 版本，防止“新头文件 + 旧动态库”误用新模式值。
-- 最低版本兼容的重定向保护补齐：libcurl 7.58.0 之前的自定义 `Authorization` Header、7.64.0 之前的自定义 `Cookie` Header，在默认不放宽跨主机认证转发时遇到重定向会 fail-closed。
-- `UrlEncode()` / `UrlDecode()` 对超过 libcurl `int` 长度上限的输入显式抛出 `std::length_error`，不再静默截断。
-- 非法枚举配置改为 fail-closed：非法 `HttpMethod` 不再静默退化为 GET，非法 `HttpVersion` / `TlsVersion` / `CertificateRevocationPolicy` / `ProxyType` 会在请求预检阶段返回 `InvalidArgument`，非法 `ApiKeyLocation` 在构造认证提供器时抛出 `std::invalid_argument`。
-- Schannel `BestEffort` 在 libcurl 7.70.0 之前不再退化为 `NO_REVOKE`；旧版本保持 Schannel 默认严格吊销检查，避免静默降低 TLS 安全等级。
-- 自动重试对外部响应 sink 的副作用判定修正：`responseChunkCallback`/`responseStream` 一旦开始接收数据，即使随后返回失败，也会视为 sink 已被触碰；没有 `responseRetryResetCallback` 时不会贸然重放并造成重复数据。
-- `AsyncHttpClient::PendingCount()` 修正 future 交付竞态：请求会在 future 置为 ready 或 callback 开始前先移出计数。该值用于近实时观测，不是完成同步原语。
-- 异步完成 dispatcher 的异常兜底修正：入队失败时保留原 callback/response 并在当前线程同步交付，不再因为提前 move 而丢失完成通知。
-- 异步 multi fatal 清理在无法确认 easy handle 已从 multi detach 时延迟释放 easy/mime/slist，直到 multi 栈销毁后再回收，避免异常路径提前 cleanup 仍可能附着的 handle。
-- Windows 普通下载提交纠正：已有目标继续使用 `ReplaceFileW`，但不再传入 Windows 文档明确不支持的 `REPLACEFILE_WRITE_THROUGH`；不存在目标时仍使用 `MoveFileExW(..., MOVEFILE_WRITE_THROUGH)`。文档不再宣称 `ReplaceFileW` 具有不存在的 write-through 保证。
-- Resume 失败后的本地完整性错误不再被忽略：如果无法把文件恢复到 `resumeFrom`，结果会提升为 `CURLE_WRITE_ERROR / Download`，同时保留原请求错误文本。
-- 清理了重复错误分类赋值和重复 TTFB Debug 输出等批量编辑残留，并同步修正公开注释/手册与真实实现不一致之处。
+本次 V4.2.6 实际确认并修复：
 
-V4.2.4 已有且 V4.2.5 继续保留的重要基础语义，包括：默认 128 MiB `response.content` 缓存上限、2 MiB Header/Trailer 上限、非 Resume 下载的同目录临时文件提交、`allowHttpsToHttp=false` 的仅 HTTPS 重定向目标限制、`enableCookieEngine=false` 的 Session Cookie 隔离，以及认证重放/异步完成线程模型等。后文各专题仍给出完整说明。
+- **自动重定向默认改为拒绝 HTTP 目标**：`RedirectOptions::allowHttpsToHttp` 从 `true` 改为 `false`。默认仍会跟随允许的 HTTPS 重定向，但任何 HTTP 重定向目标都会被 libcurl 协议白名单拒绝，因此也会拒绝 `HTTP → HTTP`。需要兼容 HTTP 重定向的业务必须显式设置 `allowHttpsToHttp=true`。
+- **生产默认最低 TLS 固定为 1.2**：`TlsOptions::minVersion` 从 `Default` 改为 `Tls1_2`，避免在 libcurl 8.16.0 之前或不同 TLS Backend 上因运行库默认值不同而意外允许 TLS 1.0/1.1。HTTPS Proxy 同样应用该 TLS 版本边界。遗留系统如确需旧 TLS，必须显式降低 `minVersion` 并自行承担风险。
+- **Debug 内置敏感 Header 脱敏表与重定向敏感判定对齐**：除 `Authorization`、`Proxy-Authorization`、`Cookie`、`Set-Cookie`、`X-API-Key` 外，默认还会脱敏 `Api-Key`、`X-Auth-Token`、`X-Access-Token`、`X-Secret`，避免“重定向层认为是秘密、日志层却明文输出”的策略漂移。
+- **自定义敏感 Query 名称先 Trim 再匹配**：`debug.sensitiveQueryParameters` 中意外带首尾空白时仍能正确参与 URL/Metrics 脱敏，不再静默失效。
+- **显式空值 Cookie 不再被丢弃**：`RequestOptions::cookies.SetCookie("flag", "")` 会按 `flag=` 发送。空字符串表示合法 Cookie 值，不再被误判为“没有 Cookie”。
+- **TLS 最高版本为 `Default` 时不再注入 `CURL_SSLVERSION_MAX_DEFAULT`**：`maxVersion=Default` 的真实语义是“不额外限制最高版本”，因此只传最低版本值；只有显式配置最高版本时才 OR 对应 MAX 位。这样既保持默认 TLS 1.2+ 基线，也减少旧 libcurl/wolfSSL 对 MAX 宏历史兼容差异带来的风险。HTTPS Proxy 使用同一组合规则。
+- **复杂 `Link` Header 改为 fail-safe 整体脱敏**：HTTP `Link` 字段可在单个字段值中包含多个 URI-reference，通用“单 URL”脱敏器无法可靠覆盖后续链接。`hideSensitiveUrlData=true` 时 V4.2.6 直接把 `Link` 值输出为 `***`，避免第二个及后续 URL 的 token/query 凭据进入 Debug/verbose 日志。
+- **手册语义同步**：修正 V4.2.5 中关于安全重定向默认值的前后矛盾，并明确 `MockTransport` 本身不会执行 `CurlTransport` 的自动重试循环。
+
+V4.2.5 已有并在 V4.2.6 继续保留的主要安全语义包括：Debug 总开关与过滤 verbose、敏感凭据真实遇到重定向后的 fail-closed、旧 libcurl 自定义 Method 重定向保护、URL 编解码长度检查、非法枚举 fail-closed、Schannel 吊销兼容处理、外部响应 sink 重试保护、异步完成/资源清理兜底、默认 128 MiB Body 与 2 MiB Header/Trailer 上限、非 Resume 下载的同目录临时文件提交，以及认证刷新重放与 Session Cookie 隔离。
 
 ### 默认资源限制的设计决定
 
-V4.2.5 保留 `128 MiB` 内存响应缓存上限和 `2 MiB` 单 attempt Header/Trailer 上限。这两个值对常规业务足够宽松，同时可以避免失控响应无限消耗内存；需要处理超大内存响应或异常巨大的 Header 时，可显式设为更大值或 `0`。对于大文件，推荐直接使用流式 sink 或文件下载接口，而不是依赖 `response.content`。
+V4.2.6 保留 `128 MiB` 内存响应缓存上限和 `2 MiB` 单 attempt Header/Trailer 上限。这两个值对常规业务足够宽松，同时可以避免失控响应无限消耗内存；需要处理超大内存响应或异常巨大的 Header 时，可显式设为更大值或 `0`。对于大文件，推荐直接使用流式 sink 或文件下载接口，而不是依赖 `response.content`。
 
 
 `curl_ex` 是基于 libcurl 的 C++17 HTTP 封装层，设计目标是：
@@ -81,7 +76,7 @@ libcurl easy / multi
 ## 2. 最简单的 GET
 
 ```cpp
-#include "curl_ex_v4.2.5.h"
+#include "curl_ex_v4.2.6.h"
 
 using namespace ytpp::curl_ex;
 
@@ -340,7 +335,7 @@ auto response = HttpRequest::UploadFile(
 
 ## 12. 文件下载
 
-V4.2.5 的普通下载默认使用目标同目录临时文件。只有请求完整成功并通过最终检查后才提交到目标路径，因此网络中断、HTTP 失败或回调失败不会提前破坏已有文件。Resume 模式为了续写现有文件仍会直接操作目标文件。
+V4.2.6 的普通下载默认使用目标同目录临时文件。只有请求完整成功并通过最终检查后才提交到目标路径，因此网络中断、HTTP 失败或回调失败不会提前破坏已有文件。Resume 模式为了续写现有文件仍会直接操作目标文件。
 
 
 ```cpp
@@ -479,6 +474,15 @@ options.cookies.SetCookie("sid", "123");
 
 注意：`HttpCookiesWrapper` 是结构化便利容器；真正的 Session Cookie 路由和 Cookie Jar 更推荐让 libcurl Cookie Engine 管理。
 
+V4.2.6 保留显式空值 Cookie：
+
+```cpp
+options.cookies.SetCookie("flag", "");
+// 请求中发送：Cookie: flag=
+```
+
+如果调用方确实希望删除 Cookie，应调用 `EraseCookie()`，不要依赖空字符串被自动忽略。
+
 ---
 
 # 第四部分：RequestOptions 完整说明
@@ -574,7 +578,7 @@ Http2Tls
 Http3
 ```
 
-推荐默认保持 `Auto`，除非目标服务存在明确兼容性要求。v4.2.5 在 `Auto` 时不会主动设置 `CURLOPT_HTTP_VERSION`，而是完全沿用当前 libcurl 的默认 HTTP 协商策略。
+推荐默认保持 `Auto`，除非目标服务存在明确兼容性要求。v4.2.6 在 `Auto` 时不会主动设置 `CURLOPT_HTTP_VERSION`，而是完全沿用当前 libcurl 的默认 HTTP 协商策略。
 
 ---
 
@@ -648,12 +652,24 @@ Disabled    完全关闭 Schannel 吊销检查
 
 ### TLS Backend 与 libcurl 版本兼容性
 
-`TlsVersion::Default` 的最低/最高版本都保持 `Default` 时，v4.2.5 不会主动调用 `CURLOPT_SSLVERSION`，直接采用当前 libcurl/TLS Backend 的默认协商策略。这样可以减少对旧版 wolfSSL 等 Backend 的额外约束。
+V4.2.6 的 `TlsOptions` 默认值为：
+
+```cpp
+TlsOptions tls;
+// tls.minVersion == TlsVersion::Tls1_2
+// tls.maxVersion == TlsVersion::Default
+```
+
+因此正常请求会显式要求 **TLS 1.2 或更高版本**，最高版本仍由当前 libcurl/TLS Backend 决定；如果使用 HTTPS Proxy，同一最低/最高版本组合也会应用到代理 TLS 握手。这样可以让项目支持 libcurl 7.56.0 的同时，不依赖旧运行库各自不同的 TLS 默认最低版本。
+
+当 `maxVersion == TlsVersion::Default` 时，V4.2.6 **不会**再额外 OR `CURL_SSLVERSION_MAX_DEFAULT`，因为 `Default` 在这里就是“不限制最高版本”。只有显式设置 `Tls1_0`～`Tls1_3` 最高版本时才加入对应 MAX 位。这避免了无必要地触发旧 libcurl/TLS Backend（尤其历史 wolfSSL 组合）对 MAX 宏的兼容差异，同时不改变显式最高版本限制。
+
+只有调用方把 `minVersion` 和 `maxVersion` 都显式设为 `TlsVersion::Default` 时，封装才完全沿用当前 libcurl/TLS Backend 的默认 TLS 版本策略。这个兼容模式会失去 V4.2.6 的 TLS 1.2 安全基线，不建议生产环境无理由使用。
 
 需要特别注意：
 
 - `verifyStatus=true` 对应 OCSP Stapling；当前 libcurl 文档仅列出 OpenSSL/GnuTLS Backend 支持，默认关闭。
-- `CertificateRevocationPolicy::BestEffort` 主要用于 Windows Schannel。`CURLSSLOPT_REVOKE_BEST_EFFORT` 从 libcurl 7.70.0 提供；更旧版本无法表达 BestEffort，V4.2.5 会保持 Schannel 默认严格吊销检查，而不是退化为 `NO_REVOKE`。
+- `CertificateRevocationPolicy::BestEffort` 主要用于 Windows Schannel。`CURLSSLOPT_REVOKE_BEST_EFFORT` 从 libcurl 7.70.0 提供；更旧版本无法表达 BestEffort，V4.2.6 会保持 Schannel 默认严格吊销检查，而不是退化为 `NO_REVOKE`。
 - `CURLOPT_PINNEDPUBLICKEY` 的 Schannel 支持从 7.58.1 开始；`CURLOPT_CAINFO` 的 Schannel 支持从 7.60.0 开始；Schannel 对 `CURLOPT_SSL_CIPHER_LIST` 的支持从 7.61.0 开始。因此“封装最低支持 libcurl 7.56.0”不等于每个 TLS 高级选项在每个 Backend 上都可用。
 - `CURLOPT_TLS13_CIPHERS` 当前支持 OpenSSL、wolfSSL、mbedTLS、Rustls，不支持 GnuTLS/Schannel；`caPath`、`crlFile`、客户端证书/私钥格式等也存在 Backend 差异。封装对显式设置的 libcurl option 检查返回值；Backend 不支持时请求会失败，而不是把该安全配置当作成功。
 - HTTP Bearer 原生认证需要 libcurl 7.61.0 或更新版本；更旧版本会返回明确的“不支持”错误，不影响 Basic/Digest 等基础 HTTP 认证。
@@ -716,29 +732,31 @@ nullopt      继续使用内置策略
 options.redirect.follow = true;
 options.redirect.maxRedirects = 10;
 options.redirect.autoReferer = false;
-options.redirect.allowHttpsToHttp = true;
+options.redirect.allowHttpsToHttp = false; // V4.2.6 安全默认值
 options.redirect.forwardAuthToOtherHosts = false;
 options.redirect.forwardSensitiveHeadersToOtherHosts = false;
 options.redirect.allowExplicitCookiesOnRedirects = false;
 options.redirect.allowUnpinnedRedirects = false;
 ```
 
-普通无凭据请求仍默认跟随重定向。`forwardAuthToOtherHosts=false` 对应 libcurl 标准认证信息的跨主机保护；V4.2.5 对封装无法在 FOLLOWLOCATION 内安全逐跳判断的敏感数据采用“首跳正常、下一跳前 fail-closed”：
+普通无凭据请求仍默认跟随重定向。`forwardAuthToOtherHosts=false` 对应 libcurl 标准认证信息的跨主机保护；V4.2.6 对封装无法在 FOLLOWLOCATION 内安全逐跳判断的敏感数据采用“首跳正常、下一跳前 fail-closed”：
 
 - 自定义敏感 Header（内置常见名称或 `debug.sensitiveHeaders`）：首跳照常发送；如果服务器真实返回重定向，默认停止，不把该 Header 自动带入下一跳。明确接受自动重定向链可能跨主机转发的风险时才设置 `forwardSensitiveHeadersToOtherHosts=true`。
 - `RequestOptions::cookies`：它最终使用 `CURLOPT_COOKIE`，libcurl 会把这种显式 Cookie 继续用于后续重定向。默认在真实出现重定向后停止；明确接受风险时才设置 `allowExplicitCookiesOnRedirects=true`。Session Cookie Engine 仍按 libcurl 自身的 Domain/Path/Secure 等 Cookie 规则处理，不等同于这个显式 Cookie override。
 - `tls.pinnedPublicKey`：首跳仍正常执行 Pin 校验；如果出现重定向，默认停止，因为同一个 `CURLOPT_PINNEDPUBLICKEY` 不能被封装视为“已经安全覆盖所有其他 Origin”。明确接受后续跳转风险时才设置 `allowUnpinnedRedirects=true`；更安全的做法是关闭自动重定向，校验 `Location` 后为目标 Origin 建立新的请求和 Pin。
-- libcurl 8.13.0 之前，自定义 Method 使用 `CURLOPT_CUSTOMREQUEST` 时，FOLLOWLOCATION 可能错误保持 Method，无法可靠服从 301/302/303 的 Method 改写规则。V4.2.5 在这类旧运行库上同样执行首跳，若真实出现重定向则在下一跳前停止；8.13.0+ 使用 `CURLFOLLOW_OBEYCODE`。
+- libcurl 8.13.0 之前，自定义 Method 使用 `CURLOPT_CUSTOMREQUEST` 时，FOLLOWLOCATION 可能错误保持 Method，无法可靠服从 301/302/303 的 Method 改写规则。V4.2.6 在这类旧运行库上同样执行首跳，若真实出现重定向则在下一跳前停止；8.13.0+ 使用 `CURLFOLLOW_OBEYCODE`。
 
-由于最低支持 libcurl 7.56.0，V4.2.5 还会保护旧版本缺失的跨主机行为：7.58.0 之前的自定义 `Authorization` Header、7.64.0 之前的自定义 `Cookie` Header，在默认不放宽认证转发时遇到重定向也会 fail-closed。
+由于最低支持 libcurl 7.56.0，V4.2.6 还会保护旧版本缺失的跨主机行为：7.58.0 之前的自定义 `Authorization` Header、7.64.0 之前的自定义 `Cookie` Header，在默认不放宽认证转发时遇到重定向也会 fail-closed。
 
-如果设置 `options.redirect.allowHttpsToHttp = false`，V4.2.5 会把允许的重定向协议收紧为仅 HTTPS。这个定义比“只检查初始 URL 是否为 HTTPS”更严格，因此 `HTTP → HTTP` 重定向也会被拒绝；这是显式安全模式的预期行为。
+V4.2.6 默认 `allowHttpsToHttp=false`，因此允许的**重定向目标协议**收紧为仅 HTTPS。这个定义比“只阻止 HTTPS→HTTP”更严格：即使初始请求本身是 HTTP，`HTTP → HTTP` 的自动重定向目标也会被拒绝。这是生产安全默认值，而不是额外开启的严格模式。
 
-如果业务要求更严格，可以：
+只有明确需要兼容 HTTP 重定向时才放宽：
 
 ```cpp
-options.redirect.allowHttpsToHttp = false;
+options.redirect.allowHttpsToHttp = true;
 ```
+
+放宽后重定向目标允许 HTTP/HTTPS，但其他凭据、Cookie、Pinning 和跨主机认证保护仍按各自开关执行。
 
 响应中的所有 Header 块可通过：
 
@@ -785,7 +803,7 @@ options.acceptEncoding = "gzip, br";
 
 ## 25. Cookie Engine
 
-`enableCookieEngine=false` 的 V4.2.5 语义是“本次请求不使用当前 Session Cookie 状态”。即使复用 `HttpClient` easy handle 或 `AsyncHttpClient` 的共享 Cookie Jar，本次请求也不会携带历史 Cookie；请求完成后原有 Cookie Session 仍可继续使用。
+`enableCookieEngine=false` 的 V4.2.6 语义是“本次请求不使用当前 Session Cookie 状态”。即使复用 `HttpClient` easy handle 或 `AsyncHttpClient` 的共享 Cookie Jar，本次请求也不会携带历史 Cookie；请求完成后原有 Cookie Session 仍可继续使用。
 
 
 ```cpp
@@ -859,7 +877,7 @@ std::ofstream out("file.bin", std::ios::binary);
 options.responseStream = &out;
 ```
 
-调用方必须保证流对象在请求结束前一直有效。
+调用方必须保证流对象在请求结束前一直有效。如果多个并发请求共享同一个 `responseStream` 或有状态 `responseChunkCallback`，其线程安全、输出分帧和业务级数据隔离由调用方保证；更推荐每个并发请求使用独立 sink。
 
 ### 外部响应接收器与自动重试
 
@@ -925,7 +943,7 @@ options.range = "0-1023";
 options.resumeFrom = 1024;
 ```
 
-`resumeFrom` 在 v4.2.5 中明确用于 **GET 下载断点续传**。使用 `HttpRequest::Download()` 时，本地文件必须已经存在且大小与 `resumeFrom` 完全一致，之后才会以追加方式继续下载。
+`resumeFrom` 在 v4.2.6 中明确用于 **GET 下载断点续传**。使用 `HttpRequest::Download()` 时，本地文件必须已经存在且大小与 `resumeFrom` 完全一致，之后才会以追加方式继续下载。
 
 不要同时设置 `range` 与 `resumeFrom`，这两个语义会被本地参数校验拒绝。
 
@@ -1007,9 +1025,11 @@ options.debug.sensitiveHeaders.push_back("X-Private-Token");
 options.debug.sensitiveQueryParameters.push_back("customCredential");
 ```
 
-`hideSensitiveUrlData=true` 不只处理请求 URL，也会处理响应中的 `Location`、`Content-Location`、`Referer`、`Destination`、`Link`、`Refresh` 等可能携带 URL 的 Header。`ApiKeyAuthProvider` 使用 Header/Query 模式时会自动登记它自己的字段名为敏感字段。
+默认敏感 Header 包括 `Authorization`、`Proxy-Authorization`、`Cookie`、`Set-Cookie`、`X-API-Key`、`Api-Key`、`X-Auth-Token`、`X-Access-Token`、`X-Secret`。自定义 `sensitiveQueryParameters` 名称比较会忽略首尾空白并按大小写不敏感处理。
 
-`DebugOptions::enabled` 是日志总开关；`enabled=false` 时即使遗留 `curlVerbose=true` 也不会启用 verbose。`curlVerbose=true` 在 V4.2.5 中不再直接打开 libcurl 原始 stderr verbose，而是安装封装层过滤回调：URL/Header 仍按上述规则脱敏，原始 Body 和 TLS record 不记录。若同时主动关闭 Header/URL 脱敏，日志就可能包含凭据；生产环境仍应把日志输出视为敏感数据资产。
+`hideSensitiveUrlData=true` 不只处理请求 URL，也会处理响应中可能携带 URL 的 Header。`Location`、`Content-Location`、`Referer`、`Destination`、`Refresh` 会执行 URL/query 脱敏；`Link` 因为一个字段值可以包含多个 URI-reference，为避免后续 URL 的凭据漏出，会直接把整个字段值脱敏为 `***`。`ApiKeyAuthProvider` 使用 Header/Query 模式时会自动登记它自己的字段名为敏感字段。
+
+`DebugOptions::enabled` 是日志总开关；`enabled=false` 时即使遗留 `curlVerbose=true` 也不会启用 verbose。`curlVerbose=true` 在 V4.2.6 中不再直接打开 libcurl 原始 stderr verbose，而是安装封装层过滤回调：URL/Header 仍按上述规则脱敏，原始 Body 和 TLS record 不记录。若同时主动关闭 Header/URL 脱敏，日志就可能包含凭据；生产环境仍应把日志输出视为敏感数据资产。
 
 建议生产环境保持 Body 日志关闭，避免凭据、个人数据或大型响应进入日志。
 
@@ -1190,7 +1210,7 @@ client.Get(url);
 
 ### 重要：显式 options 不是“增量合并”
 
-当前 v4.2.5 中：
+当前 v4.2.6 中：
 
 ```cpp
 client.Get(url, options);
@@ -1315,7 +1335,7 @@ clientOptions.authProvider =
     );
 ```
 
-Query 模式会解析原 URL 的查询参数，再设置对应 API Key 参数。V4.2.5 会自动把 Query 参数名登记到 `debug.sensitiveQueryParameters`，Header 模式则自动登记到 `debug.sensitiveHeaders`，因此自定义 API Key 名称也会参与 Debug/Metrics 脱敏及重定向保护。
+Query 模式会解析原 URL 的查询参数，再设置对应 API Key 参数。V4.2.6 会自动把 Query 参数名登记到 `debug.sensitiveQueryParameters`，Header 模式则自动登记到 `debug.sensitiveHeaders`，因此自定义 API Key 名称也会参与 Debug/Metrics 脱敏及重定向保护。
 
 ---
 
@@ -1605,13 +1625,14 @@ mock->AddRule(
 
 ```text
 401 Token Refresh
-429 / 503 重试策略
 Middleware
 认证 Header
 Circuit Breaker
 Metrics
 业务错误处理
 ```
+
+注意：`MockTransport::Send()` 每次只按规则返回一次响应，**不会执行 `CurlTransport` 内部的自动重试循环**。因此 429/503、`Retry-After`、回退延迟和上传/响应 sink 重放等重试语义，应使用真实 `CurlTransport` 配合本地测试服务器验证，或为专门的测试 Transport 自行实现等价的重试行为；不要把 Mock 的单次返回误认为已经覆盖自动重试。
 
 ---
 
@@ -1803,7 +1824,7 @@ auto response = co_await PostAwaitable(
 
 ## 63. HttpClient
 
-当前 v4.2.5 默认 `CurlTransport` 内部拥有一个可复用 easy handle。
+当前 v4.2.6 默认 `CurlTransport` 内部拥有一个可复用 easy handle。
 
 因此推荐：
 
@@ -1845,7 +1866,7 @@ responseChunkCallback
 
 ## 65. min / max 宏
 
-v4.2.5 源码在涉及标准库 `min/max` 时使用了防宏冲突形式，例如：
+v4.2.6 源码在涉及标准库 `min/max` 时使用了防宏冲突形式，例如：
 
 ```cpp
 (std::max)(a, b)
@@ -1895,12 +1916,12 @@ unsigned long httpAuth = CURLAUTH_ANY;
 
 ## 68. 本次正式交付文件
 
-v4.2.5 的正式交付只包含以下三个互相配套的文件：
+v4.2.6 的正式交付只包含以下三个互相配套的文件：
 
 ```text
-curl_ex_v4.2.5.h
-curl_ex_v4.2.5.cpp
-curl_ex_v4.2.5.md
+curl_ex_v4.2.6.h
+curl_ex_v4.2.6.cpp
+curl_ex_v4.2.6.md
 ```
 
 请始终让 `.h` 与 `.cpp` 使用完全相同的版本号。
@@ -1913,7 +1934,7 @@ curl_ex_v4.2.5.md
 
 ```cmake
 add_library(curl_ex STATIC
-    curl_ex_v4.2.5.cpp
+    curl_ex_v4.2.6.cpp
 )
 
 target_include_directories(curl_ex
@@ -1994,7 +2015,7 @@ options.tls.pinnedPublicKey = "sha256//BASE64_HASH";
 auto response = HttpRequest::Get(url, options);
 ```
 
-Pinning 失败属于 TLS 传输错误。V4.2.5 不会因为 `redirect.follow=true` 就预先拒绝带 Pin 的普通请求：首跳照常执行 Pin 校验；只有服务器真实返回重定向时，默认才会在下一跳前 fail-closed。生产环境优先关闭自动重定向并逐 Origin 校验；只有明确接受后续跳转风险时才设置 `options.redirect.allowUnpinnedRedirects = true`。
+Pinning 失败属于 TLS 传输错误。V4.2.6 不会因为 `redirect.follow=true` 就预先拒绝带 Pin 的普通请求：首跳照常执行 Pin 校验；只有服务器真实返回重定向时，默认才会在下一跳前 fail-closed。生产环境优先关闭自动重定向并逐 Origin 校验；只有明确接受后续跳转风险时才设置 `options.redirect.allowUnpinnedRedirects = true`。
 
 ---
 
@@ -2047,7 +2068,7 @@ auto response = HttpRequest::Request(
 );
 ```
 
-重试时封装可能要求上传源 `Rewind()`；不能回退的流式源无法安全重放。
+重试时封装可能要求上传源 `Rewind()`；不能回退的流式源无法安全重放。`IUploadSource` 通常包含读取游标状态，因此同一个实例默认应只属于一个正在进行的逻辑请求；不要把同一个有状态 `uploadSource` 同时交给多个并发请求，除非你的实现明确自行完成并发隔离/多游标语义。
 
 ---
 
@@ -2221,15 +2242,15 @@ HttpAwaitable
 
 # 第十九部分：版本同步规则
 
-## 85. v4.2.5 文件必须配套
+## 85. v4.2.6 文件必须配套
 
 本版本以后统一以文件名中的版本号判断配套关系。
 
 请同时使用：
 
 ```text
-curl_ex_v4.2.5.h
-curl_ex_v4.2.5.cpp
+curl_ex_v4.2.6.h
+curl_ex_v4.2.6.cpp
 ```
 
 不要使用：
@@ -2346,27 +2367,27 @@ TransportOk() -> 传输层是否成功
 Ok()          -> 传输成功并且 HTTP 为 2xx
 ```
 
-v4.2.5 的设计目标就是：高频 API 尽量简单，高级能力全部存在，但只有真正需要时才进入对应层级。
+v4.2.6 的设计目标就是：高频 API 尽量简单，高级能力全部存在，但只有真正需要时才进入对应层级。
 
 ---
 
-# V4.2.5 发布与验证说明
+# V4.2.6 发布与验证说明
 
 正式源码文件为：
 
 ```text
-curl_ex_v4.2.5.h
-curl_ex_v4.2.5.cpp
-curl_ex_v4.2.5.md
+curl_ex_v4.2.6.h
+curl_ex_v4.2.6.cpp
+curl_ex_v4.2.6.md
 ```
 
 建议项目首次使用时至少执行：C++17/C++20 编译、基础 HTTP smoke test、目标 TLS backend 的 HTTPS 测试，以及下载/代理/认证等与你业务相关的集成测试。Windows 项目建议使用 `/W4 /permissive- /utf-8`；工程层可以定义 `NOMINMAX`，但本公共头文件自身也已经防御 `Windows.h` 的 `min/max` 宏污染。
 
 ---
 
-## V4.2.5 本次生产审计验证记录
+## V4.2.6 本次生产审计验证记录
 
-本节记录本次 V4.2.5 交付前实际执行过的验证，目的是区分“源码设计目标”和“已经在当前审计环境真实跑过的测试”。测试通过不等于对所有操作系统、TLS Backend、代理产品和服务端实现作绝对零缺陷承诺；生产项目仍应保留自身 CI、目标平台编译和业务集成测试。
+本节记录本次 V4.2.6 交付前实际执行过的验证，目的是区分“源码设计目标”和“已经在当前审计环境真实跑过的测试”。测试通过不等于对所有操作系统、TLS Backend、代理产品和服务端实现作绝对零缺陷承诺；生产项目仍应保留自身 CI、目标平台编译和业务集成测试。
 
 ### 审计环境
 
@@ -2374,12 +2395,13 @@ curl_ex_v4.2.5.md
 Linux x86_64
 GCC 14.2.0
 Clang 17.0.0
-libcurl 8.10.1
-TLS Backend: OpenSSL 3.5.5
 C++17 / C++20
+libcurl 8.10.1 + OpenSSL 3.5.5
+libcurl 8.14.1 + OpenSSL 3.5.5
+libcurl 8.14.1 + GnuTLS 3.8.9
 ```
 
-Windows 专用提交路径（`ReplaceFileW` / `MoveFileExW`）、Schannel 以及其他 TLS Backend 在本次 Linux 容器中无法进行真实运行测试；这些部分按公开 API 契约和条件编译路径审计，最终 Windows 项目仍应使用实际 MSVC/libcurl/Schannel 组合执行 CI。
+Windows 专用提交路径（`ReplaceFileW` / `MoveFileExW`）和 Schannel 在本次 Linux 容器中无法进行真实运行测试；这些部分按公开 API 契约和条件编译路径审计，最终 Windows 项目仍应使用实际 MSVC/libcurl/Schannel 组合执行 CI。OpenSSL 与 GnuTLS 则都已经进行真实 TLS 运行回归。
 
 ### 已执行的编译与静态边界验证
 
@@ -2387,50 +2409,83 @@ Windows 专用提交路径（`ReplaceFileW` / `MoveFileExW`）、Schannel 以及
 - GCC × C++20：严格 warning + `-Werror` 编译通过。
 - Clang × C++17：严格 warning + `-Werror` 编译通过。
 - Clang × C++20：严格 warning + `-Werror` 编译通过。
-- 对最低版本 `LIBCURL_VERSION_NUM=0x073800`（7.56.0）条件分支执行了模拟编译，旧版本条件路径可编译；由于本次环境没有真实 7.56.0 开发头文件，这不替代“真实 7.56.0 SDK + 运行库”的 CI。
-- 公共头文件执行了 `min/max` 宏预先存在场景的独立包含测试，包含后宏可恢复，标准库 `(Type::max)()` 用法不受污染。
-- 最终源码执行 ASAN + UBSAN 代表性运行回归，未报告 sanitizer 错误。
+- GCC 最终 warning 集包含 conversion、sign-conversion、shadow、format、null-dereference、duplicated-cond/branch、logical-op 等；Clang 对应启用 conversion、sign-conversion、shadow、format、null-dereference。Linux/LP64 下的 `-Wuseless-cast` 没有作为跨平台交付门槛，因为其中若干显式转换用于 Windows/LLP64 类型边界，删除它们反而会弱化可移植意图。
+- 对最低版本 `LIBCURL_VERSION_NUM=0x073800`（7.56.0）条件分支执行过模拟编译；由于本次环境没有真实 7.56.0 SDK/运行库，该项仅用于预处理/条件路径检查，不替代真实旧版 CI。
+- 公共头文件执行过 `min/max` 宏预先存在场景的独立包含测试，包含后宏可恢复，标准库 `(Type::max)()` 风格调用不受污染。
+- 最终源码使用 Clang ASAN + UBSAN 重新编译并运行同步/异步/C++20 coroutine 回归，`FAILURES=0`，没有 sanitizer 报告。
+- 对所有主要 libcurl C callback/扩展回调异常边界进行源码扫描：Write/Header/Upload Read/Seek/Progress、Debug logger、`nativeCurlOptions`、Retry reset、Middleware/Interceptor/Mock 等均有 C++ 异常兜底，不让异常穿过 libcurl C ABI。
+- 尝试对整个 5700+ 行实现执行 GCC `-fanalyzer` 路径分析时，分析进程因当前容器资源限制被系统终止，因此 **不把 `-fanalyzer` 记为通过项**；最终结论依赖双编译器高告警、Sanitizer、针对性源码审计和真实协议回归，而不是虚报该工具结果。
 
-### 已执行的真实网络/状态机回归
+### V4.2.6 新增缺陷的定向 Red/Green 回归
 
-本地 HTTP/HTTPS 服务实际覆盖：
-
-- GET / HEAD / POST / PUT / PATCH / DELETE / OPTIONS。
-- 二进制 Body（包含 `\0`）按明确长度发送。
-- JSON、Form、普通重定向、gzip 自动解压。
-- Cookie Session、单请求 Cookie Engine 隔离及恢复。
-- 503 自动重试和 attempt 计数。
-- 普通文件下载和最终文件内容验证。
-- Async 多请求 future 并发及 `PendingCount()` 交付边界。
-- C++20 coroutine 正常恢复、挂起对象销毁及 ASAN/UBSAN 生命周期回归。
-- Debug 总开关、URL/Header 脱敏、URL-bearing 响应 Header 脱敏。
-- 自定义 Query API Key 的 Metrics 脱敏。
-- 自定义敏感 Header 重定向 fail-closed，并验证未到达目标端。
-- `RequestOptions::cookies` 显式 Cookie 重定向 fail-closed，并验证凭据未到达目标端。
-- libcurl 8.13.0 之前的 `PATCH -> 303` 同步/异步路径 fail-closed，并验证错误 PATCH 未到达重定向目标。
-- Resume 失败后本地文件回滚失败能够升级为 `CURLE_WRITE_ERROR / Download`，不会仅报告原始网络/回调错误而掩盖文件完整性恢复失败。
-- 本地真实 TLS：自签 CA/SAN 的正常证书链验证、正确 Public Key Pin 成功、错误 Pin 返回 `CURLE_SSL_PINNEDPUBKEYNOTMATCH`、带 Pin 的重定向默认在下一跳前停止，以及显式 override 后的重定向行为。
-
-### 本次审计明确修复的高风险边界
+以下问题均有可复现测试，先在缺陷语义上失败，再在 V4.2.6 当前实现上通过：
 
 ```text
-原始 curl verbose 绕过脱敏
-Debug enabled=false 仍可能打开 verbose
-自定义 Header/API Key 跨重定向泄露
-显式 CURLOPT_COOKIE Cookie 跨重定向泄露
-Pinning 只保护初始传输却继续自动跳转
-旧 libcurl CUSTOMREQUEST 在 301/302/303 上错误重放 Method
-Query API Key 未进入 Metrics 敏感参数集合
-URL codec 超过 int 长度时静默截断
-外部 response sink 已产生副作用但重试判断未感知
-future 已交付而 PendingCount 尚未递减的竞态窗口
-multi remove 失败后的 easy/mime/slist 提前释放风险
-异步完成 dispatcher 入队失败时 callback 被 move 空
-Debug 格式化异常可能逃入异步网络线程
-Schannel 旧版 BestEffort 静默退化为 NO_REVOKE
-Windows ReplaceFileW 使用不受支持的 REPLACEFILE_WRITE_THROUGH 假设
-Resume 失败后的文件回滚错误被忽略
-非法 enum 配置静默退化为其他网络行为
+安全重定向默认值：HTTP 目标默认拒绝
+默认最低 TLS：Tls1_2
+常见认证 Header：9 个内置敏感名称全部脱敏
+自定义 sensitiveQueryParameters：首尾空白不再导致匹配失效
+显式空值 Cookie：保留并发送 name=
+TLS maxVersion=Default：不注入无必要的 MAX_DEFAULT
+多 URI Link Header：hideSensitiveUrlData=true 时整体脱敏
 ```
+
+### 已执行的真实 HTTP/异步状态机回归
+
+当前最终源码重新编译后，本地 HTTP 服务验证：
+
+- `Initialize()`、同步 GET、HEAD、自定义 PATCH。
+- 二进制 POST Body（包含 `\0`）按明确长度发送。
+- 默认 HTTP 重定向目标拒绝；显式 `allowHttpsToHttp=true` 后可正常跟随。
+- 显式空值 Cookie、Session Cookie Engine。
+- 内存 Body 上限、Header 上限。
+- 503 重试与 attempt 计数。
+- Debug 常见凭据 Header 脱敏。
+- 同步 Bearer 401 refresh + replay。
+- 24 路 Async multi 并发与 `PendingCount()` 完成边界。
+- 取消请求。
+- 普通下载同目录临时文件提交与最终大小验证。
+- Resume 下载。
+- CRLF 原始 Header 注入拒绝。
+- C++20 异步认证刷新、completion callback、coroutine awaitable。
+
+上述最终普通运行回归为 `FAILURES=0`；同一组核心同步/异步/coroutine 路径在 ASAN + UBSAN 下重新执行也为 `FAILURES=0`。
+
+本次审计过程中还执行过 JSON/Form、PUT/DELETE/OPTIONS、gzip、Cookie Engine 隔离恢复、敏感凭据重定向 fail-closed、旧 CUSTOMREQUEST 重定向语义、下载回滚失败提升、重定向中间 Body 等更细分回归；最后两项源码修订仅涉及 TLS 版本值组合与 Debug `Link` 脱敏，并分别由上述定向测试及最终核心回归再次覆盖。
+
+### 已执行的真实 TLS / Backend 矩阵
+
+使用本地 CA、带 `subjectAltName=IP:127.0.0.1` 的测试服务器证书、TLS 1.3-only 服务以及真实 Public Key Pin，对 **三套实际 libcurl 运行时** 分别重新编译并执行相同测试：
+
+```text
+libcurl 8.10.1 / OpenSSL 3.5.5   FAILURES=0
+libcurl 8.14.1 / OpenSSL 3.5.5   FAILURES=0
+libcurl 8.14.1 / GnuTLS 3.8.9    FAILURES=0
+```
+
+每套均验证：
+
+- 未信任 CA 被拒绝。
+- 自定义 CA + SAN 主机验证成功。
+- 正确 Public Key Pin 成功。
+- 错误 Pin 返回 `CURLE_SSL_PINNEDPUBKEYNOTMATCH`。
+- 默认 TLS 1.2 最低版本可以协商 TLS 1.3-only 服务。
+- 显式最高 TLS 1.2 会拒绝 TLS 1.3-only 服务。
+- HTTPS → HTTP 重定向默认拒绝。
+- 显式放宽 HTTP 重定向后可正常跟随。
+
+### V4.2.6 本轮重新审计新确认并修复的问题
+
+```text
+RedirectOptions::allowHttpsToHttp 原默认 true，与企业安全默认及部分手册描述冲突
+TlsOptions 默认最低版本依赖旧 libcurl/TLS Backend，无法统一保证 TLS 1.2 基线
+Debug 敏感 Header 表与重定向敏感 Header 表漂移，X-Auth-Token 等可进入日志
+自定义 sensitiveQueryParameters 未 Trim，配置首尾空白会造成脱敏失效
+RequestOptions::cookies 序列化时忽略空值，合法 name= Cookie 被静默丢弃
+maxVersion=Default 仍显式 OR MAX_DEFAULT，产生无必要的旧 backend 兼容面
+Link Header 多 URI 场景只按单 URL 脱敏，后续 URI 的 token/query 可能漏入 Debug 日志
+```
+
+V4.2.5 已经修复并由 V4.2.6 继续保留的旧问题，例如 raw curl verbose 绕过脱敏、敏感凭据自动重定向 fail-closed、旧 CUSTOMREQUEST 重定向保护、外部 sink 重试副作用、异步完成资源清理、Schannel BestEffort 兼容、Windows ReplaceFileW 标志、Resume 回滚错误等，不重复冒充为 V4.2.6 新发现项。
 
 生产上线前仍建议在你的实际 Windows/MSVC/vcpkg triplet 上至少跑一次：Debug/Release、x86/x64（如果都交付）、实际 TLS Backend、实际代理、证书 Pin、下载目录权限/杀毒软件占用、以及真实业务服务端的集成回归。
