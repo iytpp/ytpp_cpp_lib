@@ -1,16 +1,673 @@
-﻿#include "sys_core/machine_feature.h"
-#include "sys_core/sys_core.h"
+﻿#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 
-#include <sstream>
-#include <iostream>
-#include <string>
+
+#include "sys_core/machine_feature.h"
+
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #include <Windows.h>
+#include <iphlpapi.h>
+
+#include <intrin.h>
+
+
+#include <algorithm>
+#include <array>
+#include <cctype>
+#include <ctime>
+#include <cwctype>
+#include <iomanip>
+#include <iterator>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <iostream>
 #include <wbemidl.h>
 #include <comdef.h>
 
 
 namespace ytpp {
 	namespace sys_core {
+
+		namespace
+		{
+			std::string WideToUtf8(const std::wstring& text)
+			{
+				if (text.empty())
+					return {};
+
+				const int size = WideCharToMultiByte(
+					CP_UTF8,
+					0,
+					text.data(),
+					static_cast<int>(text.size()),
+					nullptr,
+					0,
+					nullptr,
+					nullptr
+				);
+
+				if (size <= 0)
+					return {};
+
+				std::string result(static_cast<std::size_t>(size), '\0');
+
+				WideCharToMultiByte(
+					CP_UTF8,
+					0,
+					text.data(),
+					static_cast<int>(text.size()),
+					result.data(),
+					size,
+					nullptr,
+					nullptr
+				);
+
+				return result;
+			}
+
+			std::wstring ReadRegistryString(
+				HKEY root,
+				const wchar_t* subKey,
+				const wchar_t* valueName)
+			{
+				DWORD type = 0;
+				DWORD size = 0;
+
+				const LONG queryResult = RegGetValueW(
+					root,
+					subKey,
+					valueName,
+					RRF_RT_REG_SZ,
+					&type,
+					nullptr,
+					&size
+				);
+
+				if (queryResult != ERROR_SUCCESS || size == 0)
+					return {};
+
+				std::wstring value(
+					static_cast<std::size_t>(size / sizeof(wchar_t)),
+					L'\0'
+				);
+
+				const LONG readResult = RegGetValueW(
+					root,
+					subKey,
+					valueName,
+					RRF_RT_REG_SZ,
+					&type,
+					value.data(),
+					&size
+				);
+
+				if (readResult != ERROR_SUCCESS)
+					return {};
+
+				while (!value.empty() && value.back() == L'\0')
+					value.pop_back();
+
+				return value;
+			}
+
+			DWORD ReadRegistryDWORD(
+				HKEY root,
+				const wchar_t* subKey,
+				const wchar_t* valueName)
+			{
+				DWORD value = 0;
+				DWORD size = sizeof(value);
+
+				const LONG result = RegGetValueW(
+					root,
+					subKey,
+					valueName,
+					RRF_RT_REG_DWORD,
+					nullptr,
+					&value,
+					&size
+				);
+
+				if (result != ERROR_SUCCESS)
+					return 0;
+
+				return value;
+			}
+
+			bool RegistryKeyExists(
+				HKEY root,
+				const wchar_t* subKey)
+			{
+				HKEY key = nullptr;
+
+				const LONG result = RegOpenKeyExW(
+					root,
+					subKey,
+					0,
+					KEY_READ,
+					&key
+				);
+
+				if (result != ERROR_SUCCESS)
+					return false;
+
+				RegCloseKey(key);
+				return true;
+			}
+
+			std::wstring ToLower(std::wstring text)
+			{
+				std::transform(
+					text.begin(),
+					text.end(),
+					text.begin(),
+					[](wchar_t ch)
+				{
+					return static_cast<wchar_t>(std::towlower(ch));
+				}
+				);
+
+				return text;
+			}
+
+			bool ContainsAny(
+				const std::wstring& value,
+				const std::vector<std::wstring>& needles)
+			{
+				if (value.empty())
+					return false;
+
+				const std::wstring lower = ToLower(value);
+
+				for (const auto& needle : needles)
+				{
+					if (lower.find(ToLower(needle)) != std::wstring::npos)
+						return true;
+				}
+
+				return false;
+			}
+
+			std::string GetDeviceName()
+			{
+				wchar_t buffer[256]{};
+				DWORD size = static_cast<DWORD>(std::size(buffer));
+
+				if (!GetComputerNameExW(
+					ComputerNamePhysicalDnsHostname,
+					buffer,
+					&size))
+				{
+					return {};
+				}
+
+				return WideToUtf8(std::wstring(buffer, size));
+			}
+
+			std::string GetProcessorName()
+			{
+				return WideToUtf8(
+					ReadRegistryString(
+					HKEY_LOCAL_MACHINE,
+					L"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
+					L"ProcessorNameString"
+				)
+				);
+			}
+
+			std::string GetInstalledRam()
+			{
+				MEMORYSTATUSEX memoryStatus{};
+				memoryStatus.dwLength = sizeof(memoryStatus);
+
+				if (!GlobalMemoryStatusEx(&memoryStatus))
+					return {};
+
+				const double gb =
+					static_cast<double>(memoryStatus.ullTotalPhys) /
+					1024.0 /
+					1024.0 /
+					1024.0;
+
+				std::ostringstream stream;
+				stream << std::fixed << std::setprecision(2) << gb << " GB";
+
+				return stream.str();
+			}
+
+			std::string GetSystemType()
+			{
+				SYSTEM_INFO systemInfo{};
+				GetNativeSystemInfo(&systemInfo);
+
+				switch (systemInfo.wProcessorArchitecture)
+				{
+				case PROCESSOR_ARCHITECTURE_AMD64:
+					return "64 位操作系统，基于 x64 的处理器";
+
+				case PROCESSOR_ARCHITECTURE_ARM64:
+					return "64 位操作系统，基于 ARM64 的处理器";
+
+				case PROCESSOR_ARCHITECTURE_INTEL:
+					return "32 位操作系统，基于 x86 的处理器";
+
+				default:
+					return "未知";
+				}
+			}
+
+			std::string GetPenAndTouch()
+			{
+				const int digitizer = GetSystemMetrics(SM_DIGITIZER);
+
+				if (digitizer == 0)
+					return "没有可用于此显示器的笔或触控输入";
+
+				const bool pen =
+					(digitizer & NID_INTEGRATED_PEN) != 0 ||
+					(digitizer & NID_EXTERNAL_PEN) != 0;
+
+				const bool touch =
+					(digitizer & NID_INTEGRATED_TOUCH) != 0 ||
+					(digitizer & NID_EXTERNAL_TOUCH) != 0;
+
+				if (pen && touch)
+					return "支持笔和触控输入";
+
+				if (pen)
+					return "支持笔输入";
+
+				if (touch)
+					return "支持触控输入";
+
+				return "检测到数字化设备";
+			}
+
+			std::string FormatInstallDate(DWORD unixTimestamp)
+			{
+				if (unixTimestamp == 0)
+					return {};
+
+				const std::time_t timestamp =
+					static_cast<std::time_t>(unixTimestamp);
+
+				std::tm localTime{};
+
+				if (localtime_s(&localTime, &timestamp) != 0)
+					return {};
+
+				std::ostringstream stream;
+				stream << std::put_time(&localTime, "%Y-%m-%d");
+
+				return stream.str();
+			}
+
+			bool CpuReportsHypervisor()
+			{
+#if defined(_M_IX86) || defined(_M_X64)
+				int regs[4]{};
+				__cpuid(regs, 1);
+
+				// CPUID.01H:ECX[31] == 1 表示存在 hypervisor。
+				// 注意：物理机启用 Hyper-V/VBS 时同样可能为 1，
+				// 因此这里只作为弱特征使用。
+				return (static_cast<unsigned int>(regs[2]) & (1u << 31)) != 0;
+#else
+				return false;
+#endif
+			}
+
+			bool HasVirtualMachineSmbiosSignature()
+			{
+				constexpr const wchar_t* BiosKey =
+					L"HARDWARE\\DESCRIPTION\\System\\BIOS";
+
+				const std::wstring systemManufacturer =
+					ReadRegistryString(
+					HKEY_LOCAL_MACHINE,
+					BiosKey,
+					L"SystemManufacturer"
+					);
+
+				const std::wstring systemProductName =
+					ReadRegistryString(
+					HKEY_LOCAL_MACHINE,
+					BiosKey,
+					L"SystemProductName"
+					);
+
+				const std::wstring biosVendor =
+					ReadRegistryString(
+					HKEY_LOCAL_MACHINE,
+					BiosKey,
+					L"BIOSVendor"
+					);
+
+				const std::wstring biosVersion =
+					ReadRegistryString(
+					HKEY_LOCAL_MACHINE,
+					BiosKey,
+					L"BIOSVersion"
+					);
+
+				const std::vector<std::wstring> strongVmMarkers =
+				{
+					L"vmware",
+					L"virtualbox",
+					L"virtual machine",
+					L"virtual pc",
+					L"kvm",
+					L"qemu",
+					L"xen",
+					L"hvm domu",
+					L"parallels",
+					L"bochs",
+					L"bhyve"
+				};
+
+				if (ContainsAny(systemManufacturer, strongVmMarkers))
+					return true;
+
+				if (ContainsAny(systemProductName, strongVmMarkers))
+					return true;
+
+				if (ContainsAny(biosVendor, strongVmMarkers))
+					return true;
+
+				if (ContainsAny(biosVersion, strongVmMarkers))
+					return true;
+
+				// Microsoft Corporation 本身不能单独作为虚拟机特征，
+				// Surface 等真实设备也可能使用 Microsoft 作为制造商。
+				// 只有产品名明确为 Virtual Machine 时才计入。
+				const std::wstring manufacturerLower =
+					ToLower(systemManufacturer);
+
+				const std::wstring productLower =
+					ToLower(systemProductName);
+
+				if (manufacturerLower.find(L"microsoft") != std::wstring::npos &&
+					productLower.find(L"virtual machine") != std::wstring::npos)
+				{
+					return true;
+				}
+
+				return false;
+			}
+
+			bool HasVirtualMachineGuestDrivers()
+			{
+				// 这里只检查较有代表性的 Guest Additions / Tools 驱动，
+				// 不检查 Hyper-V vmic*，避免物理宿主机启用 Hyper-V 时误判。
+				constexpr std::array<const wchar_t*, 13> GuestServiceKeys =
+				{
+					L"SYSTEM\\CurrentControlSet\\Services\\VBoxGuest",
+					L"SYSTEM\\CurrentControlSet\\Services\\VBoxMouse",
+					L"SYSTEM\\CurrentControlSet\\Services\\VBoxSF",
+					L"SYSTEM\\CurrentControlSet\\Services\\VBoxVideo",
+
+					L"SYSTEM\\CurrentControlSet\\Services\\vmhgfs",
+					L"SYSTEM\\CurrentControlSet\\Services\\vmmouse",
+					L"SYSTEM\\CurrentControlSet\\Services\\vm3dmp",
+					L"SYSTEM\\CurrentControlSet\\Services\\vmrawdsk",
+					L"SYSTEM\\CurrentControlSet\\Services\\VMTools",
+
+					L"SYSTEM\\CurrentControlSet\\Services\\xenbus",
+					L"SYSTEM\\CurrentControlSet\\Services\\xenvbd",
+
+					L"SYSTEM\\CurrentControlSet\\Services\\qemufwcfg",
+					L"SYSTEM\\CurrentControlSet\\Services\\qemu-ga"
+				};
+
+				for (const wchar_t* key : GuestServiceKeys)
+				{
+					if (RegistryKeyExists(HKEY_LOCAL_MACHINE, key))
+						return true;
+				}
+
+				return false;
+			}
+
+			bool IsKnownVirtualMacPrefix(
+				const unsigned char* mac,
+				ULONG length)
+			{
+				if (mac == nullptr || length < 3)
+					return false;
+
+				struct Oui
+				{
+					unsigned char a;
+					unsigned char b;
+					unsigned char c;
+				};
+
+				// 常见虚拟化平台使用的 OUI。
+				constexpr std::array<Oui, 8> VirtualOuis =
+				{ {
+					{0x00, 0x05, 0x69}, // VMware
+					{0x00, 0x0C, 0x29}, // VMware
+					{0x00, 0x1C, 0x14}, // VMware
+					{0x00, 0x50, 0x56}, // VMware
+					{0x08, 0x00, 0x27}, // VirtualBox
+					{0x00, 0x15, 0x5D}, // Hyper-V
+					{0x00, 0x16, 0x3E}, // Xen
+					{0x52, 0x54, 0x00}  // QEMU/KVM
+				} };
+
+				for (const auto& oui : VirtualOuis)
+				{
+					if (mac[0] == oui.a &&
+						mac[1] == oui.b &&
+						mac[2] == oui.c)
+					{
+						return true;
+					}
+				}
+
+				return false;
+			}
+
+			bool HasVirtualMachineMacAddress()
+			{
+				ULONG bufferSize = 16 * 1024;
+				std::vector<unsigned char> buffer(bufferSize);
+
+				auto* adapters =
+					reinterpret_cast<IP_ADAPTER_ADDRESSES*>(buffer.data());
+
+				ULONG result = GetAdaptersAddresses(
+					AF_UNSPEC,
+					GAA_FLAG_SKIP_ANYCAST |
+					GAA_FLAG_SKIP_MULTICAST |
+					GAA_FLAG_SKIP_DNS_SERVER,
+					nullptr,
+					adapters,
+					&bufferSize
+				);
+
+				if (result == ERROR_BUFFER_OVERFLOW)
+				{
+					buffer.resize(bufferSize);
+
+					adapters =
+						reinterpret_cast<IP_ADAPTER_ADDRESSES*>(buffer.data());
+
+					result = GetAdaptersAddresses(
+						AF_UNSPEC,
+						GAA_FLAG_SKIP_ANYCAST |
+						GAA_FLAG_SKIP_MULTICAST |
+						GAA_FLAG_SKIP_DNS_SERVER,
+						nullptr,
+						adapters,
+						&bufferSize
+					);
+				}
+
+				if (result != NO_ERROR)
+					return false;
+
+				for (auto* adapter = adapters;
+					adapter != nullptr;
+					adapter = adapter->Next)
+				{
+					if (adapter->PhysicalAddressLength < 3)
+						continue;
+
+					if (IsKnownVirtualMacPrefix(
+						adapter->PhysicalAddress,
+						adapter->PhysicalAddressLength))
+					{
+						return true;
+					}
+				}
+
+				return false;
+			}
+
+			bool DetectVirtualMachine()
+			{
+				// 多维度评分：
+				//
+				// 1. SMBIOS / 系统厂商与产品名：强特征        +4
+				// 2. Guest Additions / Tools 驱动：强特征      +3
+				// 3. 虚拟网卡 OUI：中等特征                   +2
+				// 4. CPUID Hypervisor Present：弱特征          +1
+				//
+				// 阈值设为 5：
+				// 不会因为单一特征就认定为 VM。
+				//
+				// 示例：
+				// VMware SMBIOS + Hypervisor bit = 5 -> VM
+				// VirtualBox Guest 驱动 + 虚拟 MAC = 5 -> VM
+				// 物理机仅启用 Hyper-V/VBS = 1 -> 非 VM
+				// 物理机装了 Hyper-V 虚拟网卡 + VBS = 3 -> 非 VM
+
+				int score = 0;
+
+				if (HasVirtualMachineSmbiosSignature())
+					score += 4;
+
+				if (HasVirtualMachineGuestDrivers())
+					score += 3;
+
+				if (HasVirtualMachineMacAddress())
+					score += 2;
+
+				if (CpuReportsHypervisor())
+					score += 1;
+
+				return score >= 5;
+			}
+		}
+
+		// 获取系统关于信息
+		SystemAboutInfo GetSystemAboutInfo()
+		{
+			SystemAboutInfo info;
+
+			constexpr const wchar_t* WindowsCurrentVersionKey =
+				L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion";
+
+			// =========================
+			// 设备规格
+			// =========================
+
+			info.deviceName = GetDeviceName();
+
+			info.processor = GetProcessorName();
+
+			info.installedRam = GetInstalledRam();
+
+			// 这里使用 MachineGuid 作为 Windows 安装实例标识。
+			// 它并不是永久硬件 ID。
+			info.deviceId = WideToUtf8(
+				ReadRegistryString(
+				HKEY_LOCAL_MACHINE,
+				L"SOFTWARE\\Microsoft\\Cryptography",
+				L"MachineGuid"
+			)
+			);
+
+			info.productId = WideToUtf8(
+				ReadRegistryString(
+				HKEY_LOCAL_MACHINE,
+				WindowsCurrentVersionKey,
+				L"ProductId"
+			)
+			);
+
+			info.systemType = GetSystemType();
+
+			info.penAndTouch = GetPenAndTouch();
+
+			// =========================
+			// Windows 规格
+			// =========================
+
+			info.edition = WideToUtf8(
+				ReadRegistryString(
+				HKEY_LOCAL_MACHINE,
+				WindowsCurrentVersionKey,
+				L"ProductName"
+			)
+			);
+
+			info.version = WideToUtf8(
+				ReadRegistryString(
+				HKEY_LOCAL_MACHINE,
+				WindowsCurrentVersionKey,
+				L"DisplayVersion"
+			)
+			);
+
+			info.installDate = FormatInstallDate(
+				ReadRegistryDWORD(
+				HKEY_LOCAL_MACHINE,
+				WindowsCurrentVersionKey,
+				L"InstallDate"
+			)
+			);
+
+			const std::wstring build = ReadRegistryString(
+				HKEY_LOCAL_MACHINE,
+				WindowsCurrentVersionKey,
+				L"CurrentBuildNumber"
+			);
+
+			const DWORD ubr = ReadRegistryDWORD(
+				HKEY_LOCAL_MACHINE,
+				WindowsCurrentVersionKey,
+				L"UBR"
+			);
+
+			if (!build.empty())
+			{
+				info.osBuild = WideToUtf8(build);
+
+				if (ubr != 0)
+				{
+					info.osBuild += ".";
+					info.osBuild += std::to_string(ubr);
+				}
+			}
+
+			// Windows“体验/功能包”没有一个稳定的一一对应 Win32 API。
+			// 暂时保留字段，获取不到时为空字符串。
+			info.experience.clear();
+
+			// =========================
+			// 虚拟机判断
+			// =========================
+
+			info.isVirtualMachine = DetectVirtualMachine();
+
+			return info;
+		}
+
+
 
 		/// <summary>
 		/// 用wmi进行查询
