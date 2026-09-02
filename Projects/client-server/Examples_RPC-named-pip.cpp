@@ -1,17 +1,17 @@
 #include <iostream>
-#include "client-server/RPC-named-pip/SampleStructs.h" // ½á¹¹ÌåÊÊÅäÀı×Ó
-#include "client-server/RPC-named-pip/NamedPipeRpcServer.h" // ·şÎñ¶ËÍ·ÎÄ¼ş
-#include "client-server/RPC-named-pip/NamedPipeRpcClient.h" // ¿Í»§¶ËÍ·ÎÄ¼ş
+#include "client-server/RPC-named-pip/SampleStructs.h" // ç»“æ„ä½“é€‚é…ä¾‹å­
+#include "client-server/RPC-named-pip/NamedPipeRpcServer.h" // æœåŠ¡ç«¯å¤´æ–‡ä»¶
+#include "client-server/RPC-named-pip/NamedPipeRpcClient.h" // å®¢æˆ·ç«¯å¤´æ–‡ä»¶
 using namespace ytpp::client_server;
 
 
 namespace ytpp::client_server
 {
-	// ·şÎñ¶ËµÄÊ¹ÓÃÀı×Ó
+	// æœåŠ¡ç«¯çš„ä½¿ç”¨ä¾‹å­
 	int example_main_server()
 	{
-		const std::wstring pipeName = L"\\\\.\\pipe\\Company.ProductName.Rpc.v2"; // ÃüÃû¹ÜµÀµÄÃû³Æ
-		const std::string sharedSecret = "Replace_With_Your_Strong_Secret"; // ¹²ÏíÃÜÔ¿
+		const std::wstring pipeName = L"\\\\.\\pipe\\Company.ProductName.Rpc.v2"; // å‘½åç®¡é“çš„åç§°
+		const std::string sharedSecret = "Replace_With_Your_Strong_Secret"; // å…±äº«å¯†é’¥
 
 		RpcLogger logger;
 		logger.Open(L"server_rpc.log", LogLevel::Debug);
@@ -19,8 +19,8 @@ namespace ytpp::client_server
 		NamedPipeRpcServer server(pipeName, sharedSecret, 8);
 		server.SetLogger(&logger);
 
-		// ACL£ºÖ»ÔÊĞí SYSTEM¡¢¹ÜÀíÔ±¡¢Authenticated Users ·ÃÎÊ¹ÜµÀ
-		// ¸üÑÏ¿ÉÒÔ¼ÌĞøÊÕ½ô
+		// ACLï¼šåªå…è®¸ SYSTEMã€ç®¡ç†å‘˜ã€Authenticated Users è®¿é—®ç®¡é“
+		// æ›´ä¸¥å¯ä»¥ç»§ç»­æ”¶ç´§
 		server.SetPipeSecuritySddl(
 			L"D:P"
 			L"(A;;GA;;;SY)"
@@ -28,11 +28,11 @@ namespace ytpp::client_server
 			L"(A;;GRGW;;;AU)"
 		);
 
-		// °×Ãûµ¥½ø³Ì£¨²»Ìí¼Ó°×Ãûµ¥¾ÍÎŞ·¨Á¬½ÓºÍ´«ÊäÊı¾İ£©
+		// ç™½åå•è¿›ç¨‹ï¼ˆä¸æ·»åŠ ç™½åå•å°±æ— æ³•è¿æ¥å’Œä¼ è¾“æ•°æ®ï¼‰
 		server.AddWhitelistProcess(L"C:\\Demo\\RpcClient.exe", PermissionLevel::User);
 		server.AddWhitelistProcess(L"C:\\Demo\\RpcAdminClient.exe", PermissionLevel::Admin);
 
-		// ×¢²áº¯ÊıÀı×Ó
+		// æ³¨å†Œå‡½æ•°ä¾‹å­
 		// Add(int32, int32) -> int32
 		server.RegisterFunction("Add", PermissionLevel::User,
 			[](const RpcCallContext&, const RpcArray& args) -> RpcResult
@@ -68,7 +68,7 @@ namespace ytpp::client_server
 				RpcResult r;
 				r.success = true;
 				r.returnValues.push_back(RpcValue(int32_t(123)));
-				r.returnValues.push_back(RpcValue(std::wstring(L"µÚ¶ş¸ö·µ»ØÖµ")));
+				r.returnValues.push_back(RpcValue(std::wstring(L"ç¬¬äºŒä¸ªè¿”å›å€¼")));
 				return r;
 			});
 
@@ -96,7 +96,7 @@ namespace ytpp::client_server
 				RpcResult r;
 				r.success = true;
 				r.returnValues.push_back(
-					RpcValue(std::wstring(L"¹ÜÀíÔ±µ÷ÓÃ³É¹¦£¬PID=") + std::to_wstring(ctx.clientProcessId))
+					RpcValue(std::wstring(L"ç®¡ç†å‘˜è°ƒç”¨æˆåŠŸï¼ŒPID=") + std::to_wstring(ctx.clientProcessId))
 				);
 				return r;
 			});
@@ -115,13 +115,13 @@ namespace ytpp::client_server
 		return 0;
 	}
 
-	// ¿Í»§¶ËµÄÊ¹ÓÃÀı×Ó
+	// å®¢æˆ·ç«¯çš„ä½¿ç”¨ä¾‹å­
 	int example_main_client()
 	{
-		const std::wstring pipeName = L"\\\\.\\pipe\\Company.ProductName.Rpc.v2"; // ÃüÃû¹ÜµÀµÄÃû³Æ
-		const std::string sharedSecret = "Replace_With_Your_Strong_Secret"; // ¹²ÏíÃÜÔ¿
+		const std::wstring pipeName = L"\\\\.\\pipe\\Company.ProductName.Rpc.v2"; // å‘½åç®¡é“çš„åç§°
+		const std::string sharedSecret = "Replace_With_Your_Strong_Secret"; // å…±äº«å¯†é’¥
 
-		// Á¬½Ó³¬Ê±Ä¬ÈÏ 2000ms£¬Á¬½Ó³Ø×îĞ¡ 2£¬×î´ó 16
+		// è¿æ¥è¶…æ—¶é»˜è®¤ 2000msï¼Œè¿æ¥æ± æœ€å° 2ï¼Œæœ€å¤§ 16
 		NamedPipeRpcClient client(pipeName, sharedSecret, 2000, 2, 16);
 
 		{
@@ -143,8 +143,8 @@ namespace ytpp::client_server
 			std::string err;
 			bool ok = client.Call("Concat",
 				{
-					RpcValue(std::wstring(L"ÄãºÃ£¬")),
-					RpcValue(std::wstring(L"ÊÀ½ç"))
+					RpcValue(std::wstring(L"ä½ å¥½ï¼Œ")),
+					RpcValue(std::wstring(L"ä¸–ç•Œ"))
 				}, r, err);
 
 			if (ok)
@@ -173,7 +173,7 @@ namespace ytpp::client_server
 		{
 			UserInfo u;
 			u.id = 7;
-			u.name = L"ÕÅÈı";
+			u.name = L"å¼ ä¸‰";
 			u.enabled = true;
 			u.score = 88.8;
 
@@ -201,8 +201,8 @@ namespace ytpp::client_server
 		{
 			auto fut = client.CallAsync("Concat",
 				{
-					RpcValue(std::wstring(L"Òì²½")),
-					RpcValue(std::wstring(L"µ÷ÓÃ"))
+					RpcValue(std::wstring(L"å¼‚æ­¥")),
+					RpcValue(std::wstring(L"è°ƒç”¨"))
 				});
 
 			RpcAsyncResult ret = fut.get();
