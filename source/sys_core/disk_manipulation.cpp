@@ -9,6 +9,90 @@
 namespace ytpp {
     namespace sys_core
 	{
+		inline std::wstring GetKnownFolderPathW(
+			REFKNOWNFOLDERID folderId,
+			bool trailingSlash)
+		{
+			PWSTR path = nullptr;
+
+			const HRESULT hr = SHGetKnownFolderPath(
+				folderId,
+				KF_FLAG_DEFAULT,
+				nullptr,
+				&path
+			);
+
+			if (FAILED(hr) || path == nullptr)
+				return {};
+
+			std::wstring result(path);
+
+			CoTaskMemFree(path);
+
+			if (trailingSlash)
+			{
+				if (!result.empty() &&
+					result.back() != L'\\' &&
+					result.back() != L'/')
+				{
+					result.push_back(L'\\');
+				}
+			} else
+			{
+				while (result.size() > 1 &&
+					(result.back() == L'\\' ||
+					result.back() == L'/'))
+				{
+					result.pop_back();
+				}
+			}
+
+			return result;
+		}
+
+		inline std::string GetKnownFolderPathU8(
+			REFKNOWNFOLDERID folderId,
+			bool trailingSlash)
+		{
+			const std::wstring widePath =
+				GetKnownFolderPathW(folderId, trailingSlash);
+
+			if (widePath.empty())
+				return {};
+
+			const int requiredSize = WideCharToMultiByte(
+				CP_UTF8,
+				0,
+				widePath.data(),
+				static_cast<int>(widePath.size()),
+				nullptr,
+				0,
+				nullptr,
+				nullptr
+			);
+
+			if (requiredSize <= 0)
+				return {};
+
+			std::string result(
+				static_cast<std::size_t>(requiredSize),
+				'\0'
+			);
+
+			WideCharToMultiByte(
+				CP_UTF8,
+				0,
+				widePath.data(),
+				static_cast<int>(widePath.size()),
+				result.data(),
+				requiredSize,
+				nullptr,
+				nullptr
+			);
+
+			return result;
+		}
+
 		std::filesystem::path GetExePath()
 		{
 			wchar_t buffer[MAX_PATH]{};
@@ -48,8 +132,6 @@ namespace ytpp {
 			return encoding_wstring_to_UTF8(dir);
 		}
 
-
-
 		std::string GetExeDirA(bool withSlash)
 		{
 			char path[MAX_PATH] = { 0 };
@@ -66,8 +148,6 @@ namespace ytpp {
 			else
 				return fullPath.substr(0, pos);
 		}
-
-
 
 		std::wstring GetExeDirW(bool withSlash)
 		{
@@ -186,8 +266,6 @@ namespace ytpp {
 			return true;
 		}
 
-
-
 		bool write_to_fileA(
 			_In_ const string & fileName,
 			_In_ const string & data)
@@ -223,7 +301,6 @@ namespace ytpp {
 			out.close();
 			return true;
 		}
-
 
 		bool write_to_fileA(
 			_In_ const string & fileName,

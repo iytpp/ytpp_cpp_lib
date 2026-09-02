@@ -668,7 +668,6 @@ namespace ytpp {
 		}
 
 
-
 		/// <summary>
 		/// 用wmi进行查询
 		/// </summary>

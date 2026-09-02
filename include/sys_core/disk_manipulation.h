@@ -4,6 +4,8 @@
 #include <fstream>
 #include <string>
 #include <vector>
+
+#include <ShlObj.h>
 #include <windows.h>
 
 #ifdef _UNICODE
@@ -12,6 +14,7 @@
 #define write_to_file write_to_fileW
 #define write_resource_file write_resource_fileW
 #define GetExeDir GetExeDirW
+#define GetKnownFolderPath GetKnownFolderPathW
 
 #else /* ANSI */
 
@@ -19,6 +22,7 @@
 #define write_to_file write_to_fileA
 #define write_resource_file write_resource_fileA
 #define GetExeDir GetExeDirA
+#define GetKnownFolderPath GetKnownFolderPathU8
 
 #endif /* _UNICODE */
 
@@ -27,6 +31,23 @@ namespace ytpp {
 	{
 		using namespace std;
 		//======================================================================
+
+
+		/*
+		* @brief 取特定目录
+		* @param [in] folderId : FOLDERID_ 开头的枚举值
+		* @param [in] trailingSlash : 是否以 \ 反斜杠结尾
+		* @return 返回特定目录路径
+		*/
+		inline std::wstring GetKnownFolderPathW(REFKNOWNFOLDERID folderId, bool trailingSlash = true);
+
+		/*
+		* @brief 取特定目录
+		* @param [in] folderId : FOLDERID_ 开头的枚举值
+		* @param [in] trailingSlash : 是否以 \ 反斜杠结尾
+		* @return 返回特定目录路径
+		*/
+		inline std::string GetKnownFolderPathU8(REFKNOWNFOLDERID folderId, bool trailingSlash = true);
 
 		/*
 		* @brief 获取当前可执行文件路径全路径，可通过GetExePath().parent_path()获取exe所在目录，可通过GetExePath().filename()获取exe文件名。
