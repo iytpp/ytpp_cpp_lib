@@ -295,32 +295,37 @@ namespace ytpp {
 			);
 		} /* read_structW */
 
-
 		bool is_admin() {
-			BOOL isMember = FALSE;
-			SID_IDENTIFIER_AUTHORITY ntAuthority = SECURITY_NT_AUTHORITY;
-			PSID adminGroup = nullptr;
+			HANDLE token = nullptr;
+			if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token)) return false;
 
-			if (!AllocateAndInitializeSid(&ntAuthority, 2, SECURITY_BUILTIN_DOMAIN_RID,
-				DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0, &adminGroup))
-				return false;
+			TOKEN_ELEVATION elevation{};
+			DWORD size = 0;
+			BOOL ok = GetTokenInformation(token, TokenElevation, &elevation, sizeof(elevation), &size);
+			CloseHandle(token);
 
-			CheckTokenMembership(nullptr, adminGroup, &isMember);
-			FreeSid(adminGroup);
-			return isMember == TRUE;
+			return ok && elevation.TokenIsElevated;
 		}
 
 		bool restart_as_admin() {
 			wchar_t exePath[MAX_PATH]{};
 			if (!GetModuleFileNameW(nullptr, exePath, MAX_PATH)) return false;
 
+			std::wstring dir = exePath;
+			size_t pos = dir.find_last_of(L"\\/");
+			if (pos != std::wstring::npos) dir.resize(pos);
+
 			SHELLEXECUTEINFOW sei{};
 			sei.cbSize = sizeof(sei);
+			sei.fMask = SEE_MASK_NOCLOSEPROCESS;
 			sei.lpVerb = L"runas";
 			sei.lpFile = exePath;
+			sei.lpDirectory = dir.c_str();
 			sei.nShow = SW_SHOWNORMAL;
 
 			if (!ShellExecuteExW(&sei)) return false;
+
+			if (sei.hProcess) CloseHandle(sei.hProcess);
 			return true;
 		}
 

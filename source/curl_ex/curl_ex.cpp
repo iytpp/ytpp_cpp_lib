@@ -29,6 +29,8 @@
 #include <stdexcept>
 #include <unordered_map>
 #include <thread>
+#include <iomanip>
+#include <locale>
 
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -109,6 +111,27 @@ std::string StripLineEnding(std::string_view line) {
         line.remove_suffix(1);
     }
     return std::string(line);
+}
+
+std::optional<std::chrono::system_clock::time_point> ParseHttpDate(const std::string& text) {
+	std::tm tm{};
+
+	std::istringstream ss(text);
+	ss.imbue(std::locale::classic());
+
+	ss >> std::get_time(&tm, "%a, %d %b %Y %H:%M:%S GMT");
+
+	if (ss.fail()) {
+		return std::nullopt;
+	}
+
+	const __time64_t timestamp = _mkgmtime64(&tm);
+
+	if (timestamp == -1) {
+		return std::nullopt;
+	}
+
+	return std::chrono::system_clock::from_time_t(timestamp);
 }
 
 std::string ToLowerCopy(std::string_view value) {
@@ -568,6 +591,7 @@ struct TransferContext {
         response->content.clear();
         response->org_headers.clear();
         response->headers.Clear();
+        response->date.reset();
         response->trailers.Clear();
         response->rawTrailers.clear();
         response->cookies.Clear();
@@ -2008,6 +2032,9 @@ void FinalizeHeaderResult(TransferContext& context, HttpResponse& response) {
         const auto& finalBlock = response.headerHistory.back();
         response.headers = finalBlock.headers;
         response.final_raw_headers = finalBlock.rawHeaders;
+		// 从最终响应 Header 中解析服务器 Date。
+        // Header 不存在或格式非法时保持 std::nullopt。
+        response.date = ParseHttpDate(response.headers.GetHeaderValue("Date"));
         if (response.code == 0 && finalBlock.statusCode != 0) {
             response.code = finalBlock.statusCode;
         }

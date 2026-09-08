@@ -741,6 +741,7 @@ struct HttpResponse {
     long code = 0;              ///< 最终 HTTP 状态码。
     std::string org_headers;    ///< 全部原始 Header 块。
     HttpHeadersWrapper headers; ///< 最终响应 Header，Trailer 也会合并到此处便于统一查询。
+    std::optional<std::chrono::system_clock::time_point> date; ///< 最终响应头中的Date。
     HttpHeadersWrapper trailers; ///< HTTP Trailer 头部。
     std::string rawTrailers;     ///< 原始 HTTP Trailer 文本。
     HttpCookiesWrapper cookies; ///< 最终响应 Set-Cookie。
