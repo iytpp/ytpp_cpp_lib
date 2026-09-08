@@ -9,7 +9,7 @@
 namespace ytpp {
     namespace sys_core
 	{
-		inline std::wstring GetKnownFolderPathW(
+		std::wstring GetKnownFolderPathW(
 			REFKNOWNFOLDERID folderId,
 			bool trailingSlash)
 		{
@@ -50,7 +50,7 @@ namespace ytpp {
 			return result;
 		}
 
-		inline std::string GetKnownFolderPathU8(
+		std::string GetKnownFolderPathU8(
 			REFKNOWNFOLDERID folderId,
 			bool trailingSlash)
 		{
@@ -356,76 +356,52 @@ namespace ytpp {
 
 		bool write_resource_fileA(
 			_In_ HMODULE hModule, 
-			_In_ int resID,
-			_In_ string resType,
-			_In_ string outPath) {
-			HRSRC hResource = FindResourceA(hModule, MAKEINTRESOURCEA(resID), resType.c_str());
-			if (hResource == NULL) {
-				//std::cout << "WriteResourceFile - 寻找必要资源失败" << std::endl;
-				return false;
-			}
+			_In_ LPCSTR resName, 
+			_In_ LPCSTR resType, 
+			_In_ const std::string& outPath) {
+			HRSRC hResource = FindResourceA(hModule, resName, resType);
+			if (!hResource) return false;
+
+			DWORD size = SizeofResource(hModule, hResource);
+			if (!size) return false;
+
 			HGLOBAL hGlobal = LoadResource(hModule, hResource);
-			if (hGlobal == NULL) {
-				//std::cout << "WriteResourceFile - 加载必要资源失败" << std::endl;
-				return false;
-			}
-			DWORD dwSize = SizeofResource(hModule, hResource);
-			if (dwSize == 0) {
-				//std::cout << "WriteResourceFile - 获取必要资源大小失败" << std::endl;
-				return false;
-			}
-			void* pResource = LockResource(hGlobal);
-			if (pResource == NULL) {
-				//std::cout << "WriteResourceFile - 锁定必要资源失败" << std::endl;
-				return false;
-			}
-			FILE* pFile = nullptr;
-			fopen_s(&pFile, outPath.c_str(), "wb");
-			if (pFile == NULL) {
-				//std::cout << "WriteResourceFile - 写入资源文件失败" << std::endl;
-				return false;
-			}
-			fwrite(pResource, 1, dwSize, pFile);
-			fclose(pFile);
-			UnlockResource(pResource);
-			return true;
+			if (!hGlobal) return false;
+
+			const void* data = LockResource(hGlobal);
+			if (!data) return false;
+
+			FILE* file = nullptr;
+			if (fopen_s(&file, outPath.c_str(), "wb") != 0 || !file) return false;
+
+			size_t written = fwrite(data, 1, size, file);
+			fclose(file);
+			return written == size;
 		}
 
 		bool write_resource_fileW(
-			_In_ HMODULE hModule,
-			_In_ int resID,
-			_In_ wstring resType,
-			_In_ wstring outPath) {
-			HRSRC hResource = FindResourceW(hModule, MAKEINTRESOURCEW(resID), resType.c_str());
-			if (hResource == NULL) {
-				//std::cout << "WriteResourceFile - 寻找必要资源失败" << std::endl;
-				return false;
-			}
+			_In_ HMODULE hModule, 
+			_In_ LPCWSTR resName, 
+			_In_ LPCWSTR resType, 
+			_In_ const std::wstring& outPath) {
+			HRSRC hResource = FindResourceW(hModule, resName, resType);
+			if (!hResource) return false;
+
+			DWORD size = SizeofResource(hModule, hResource);
+			if (!size) return false;
+
 			HGLOBAL hGlobal = LoadResource(hModule, hResource);
-			if (hGlobal == NULL) {
-				//std::cout << "WriteResourceFile - 加载必要资源失败" << std::endl;
-				return false;
-			}
-			DWORD dwSize = SizeofResource(hModule, hResource);
-			if (dwSize == 0) {
-				//std::cout << "WriteResourceFile - 获取必要资源大小失败" << std::endl;
-				return false;
-			}
-			void* pResource = LockResource(hGlobal);
-			if (pResource == NULL) {
-				//std::cout << "WriteResourceFile - 锁定必要资源失败" << std::endl;
-				return false;
-			}
-			FILE* pFile = nullptr;
-			_wfopen_s(&pFile, outPath.c_str(), L"wb");
-			if (pFile == NULL) {
-				//std::cout << "WriteResourceFile - 写入资源文件失败" << std::endl;
-				return false;
-			}
-			fwrite(pResource, 1, dwSize, pFile);
-			fclose(pFile);
-			UnlockResource(pResource);
-			return true;
+			if (!hGlobal) return false;
+
+			const void* data = LockResource(hGlobal);
+			if (!data) return false;
+
+			FILE* file = nullptr;
+			if (_wfopen_s(&file, outPath.c_str(), L"wb") != 0 || !file) return false;
+
+			size_t written = fwrite(data, 1, size, file);
+			fclose(file);
+			return written == size;
 		}
 	}
 }

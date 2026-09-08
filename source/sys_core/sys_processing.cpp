@@ -295,5 +295,34 @@ namespace ytpp {
 			);
 		} /* read_structW */
 
+
+		bool is_admin() {
+			BOOL isMember = FALSE;
+			SID_IDENTIFIER_AUTHORITY ntAuthority = SECURITY_NT_AUTHORITY;
+			PSID adminGroup = nullptr;
+
+			if (!AllocateAndInitializeSid(&ntAuthority, 2, SECURITY_BUILTIN_DOMAIN_RID,
+				DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0, &adminGroup))
+				return false;
+
+			CheckTokenMembership(nullptr, adminGroup, &isMember);
+			FreeSid(adminGroup);
+			return isMember == TRUE;
+		}
+
+		bool restart_as_admin() {
+			wchar_t exePath[MAX_PATH]{};
+			if (!GetModuleFileNameW(nullptr, exePath, MAX_PATH)) return false;
+
+			SHELLEXECUTEINFOW sei{};
+			sei.cbSize = sizeof(sei);
+			sei.lpVerb = L"runas";
+			sei.lpFile = exePath;
+			sei.nShow = SW_SHOWNORMAL;
+
+			if (!ShellExecuteExW(&sei)) return false;
+			return true;
+		}
+
 	} /* namespace sys_core */
 } /* namespace ytpp */

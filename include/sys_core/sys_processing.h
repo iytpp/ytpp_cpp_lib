@@ -256,6 +256,9 @@ namespace ytpp {
 			_In_ UINT uSizeStruct
 		);
 
+		bool is_admin();
+
+		bool restart_as_admin();
 
 	} /* namespace sys_core */
 } /* namespace ytpp */

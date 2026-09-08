@@ -39,7 +39,7 @@ namespace ytpp {
 		* @param [in] trailingSlash : 是否以 \ 反斜杠结尾
 		* @return 返回特定目录路径
 		*/
-		inline std::wstring GetKnownFolderPathW(REFKNOWNFOLDERID folderId, bool trailingSlash = true);
+		std::wstring GetKnownFolderPathW(REFKNOWNFOLDERID folderId, bool trailingSlash = true);
 
 		/*
 		* @brief 取特定目录
@@ -47,7 +47,7 @@ namespace ytpp {
 		* @param [in] trailingSlash : 是否以 \ 反斜杠结尾
 		* @return 返回特定目录路径
 		*/
-		inline std::string GetKnownFolderPathU8(REFKNOWNFOLDERID folderId, bool trailingSlash = true);
+		std::string GetKnownFolderPathU8(REFKNOWNFOLDERID folderId, bool trailingSlash = true);
 
 		/*
 		* @brief 获取当前可执行文件路径全路径，可通过GetExePath().parent_path()获取exe所在目录，可通过GetExePath().filename()获取exe文件名。
@@ -216,9 +216,9 @@ namespace ytpp {
 		*/
 		bool write_resource_fileA(
 			_In_ HMODULE hModule,
-			_In_ int resID,
-			_In_ string resType,
-			_In_ string outPath
+			_In_ LPCSTR resName,
+			_In_ LPCSTR resType,
+			_In_ const std::string& outPath
 		);
 
 		/*
@@ -231,9 +231,9 @@ namespace ytpp {
 		*/
 		bool write_resource_fileW(
 			_In_ HMODULE hModule,
-			_In_ int resID,
-			_In_ wstring resType,
-			_In_ wstring outPath
+			_In_ LPCWSTR resName,
+			_In_ LPCWSTR resType,
+			_In_ const std::wstring& outPath
 		);
 	}
 }
