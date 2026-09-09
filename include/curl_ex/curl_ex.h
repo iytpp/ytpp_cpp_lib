@@ -1,6 +1,6 @@
 #pragma once
 
-// 当前源码版本：4.2.6。
+// 当前源码版本：4.2.7。
 
 // 临时屏蔽 Windows.h 可能定义的 min/max 宏，避免污染本头文件及其包含的标准库头文件。
 #ifdef min
@@ -34,7 +34,7 @@
 #include <curl/curl.h>
 
 #if LIBCURL_VERSION_NUM < 0x073800
-#error "curl_ex v4.2.6 requires libcurl 7.56.0 or newer"
+#error "curl_ex v4.2.7 requires libcurl 7.56.0 or newer"
 #endif
 
 // 统一获取当前语言标准版本；MSVC 未启用 /Zc:__cplusplus 时使用 _MSVC_LANG。
@@ -58,7 +58,7 @@
 namespace ytpp::curl_ex {
 
 /// 当前封装版本。
-inline constexpr std::string_view kCurlExVersion = "4.2.6";
+inline constexpr std::string_view kCurlExVersion = "4.2.7";
 
 /// 显式初始化 libcurl 全局运行环境；使用 libcurl 7.84.0 之前的版本时应在创建其他线程前调用。
 /// @return libcurl 全局初始化结果。
@@ -486,6 +486,11 @@ struct TlsOptions {
     std::string cipherList;                  ///< TLS 1.2 及以下 Cipher 列表。
     std::string tls13CipherList;             ///< TLS 1.3 Cipher 列表。
     std::string crlFile;                     ///< CRL 文件路径。
+#ifdef _WIN32
+    bool useNativeCa = true;                 ///< Windows 默认请求使用系统原生 CA Store；显式 caFile/caPath 时不额外叠加 Native CA bit。
+#else
+    bool useNativeCa = false;                ///< 非 Windows 默认不改变现有 CA Trust Store 策略。
+#endif
 };
 
 /// 重试策略。

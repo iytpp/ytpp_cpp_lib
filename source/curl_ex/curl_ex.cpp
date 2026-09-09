@@ -1,6 +1,6 @@
 #include "curl_ex/curl_ex.h"
 
-// 当前源码版本：4.2.6。
+// 当前源码版本：4.2.7。
 
 // 实现文件不依赖 Windows 的 min/max 宏，主动清理以避免后续标准库和实现代码受污染。
 #ifdef min
@@ -150,13 +150,118 @@ std::string ToUpperCopy(std::string_view value) {
     return out;
 }
 
-bool IsSchannelBackend() {
+std::string ActiveTlsBackendNameFromVersionString(std::string_view sslVersion) {
+    // MultiSSL 的 ssl_version 会把未激活 Backend 放在括号内，例如：
+    //   OpenSSL/3.6.1 (Schannel)   -> 当前 Backend 是 OpenSSL
+    //   (OpenSSL/3.6.1) Schannel   -> 当前 Backend 是 Schannel
+    // 只保留括号外文本，避免把“可用但未激活”的 Backend 误判成当前 Backend。
+    std::string active;
+    int parenthesisDepth = 0;
+    for (const char ch : sslVersion) {
+        if (ch == '(') {
+            ++parenthesisDepth;
+            continue;
+        }
+        if (ch == ')') {
+            if (parenthesisDepth > 0) {
+                --parenthesisDepth;
+            }
+            continue;
+        }
+        if (parenthesisDepth == 0) {
+            active.push_back(ch);
+        }
+    }
+    return TrimCopy(active);
+}
+
+std::string ActiveTlsBackendName() {
     const curl_version_info_data* info = curl_version_info(CURLVERSION_NOW);
     if (info == nullptr || info->ssl_version == nullptr) {
-        return false;
+        return {};
+    }
+    return ActiveTlsBackendNameFromVersionString(info->ssl_version);
+}
+
+bool IsSchannelBackend() {
+    const std::string backend = ToLowerCopy(ActiveTlsBackendName());
+    return backend == "schannel" || backend.rfind("schannel/", 0) == 0;
+}
+
+#ifdef _WIN32
+bool IsOpenSslBackend() {
+    const std::string backend = ToLowerCopy(ActiveTlsBackendName());
+    return backend == "openssl" || backend.rfind("openssl/", 0) == 0;
+}
+
+bool NativeCaOptionSupportedAtRuntime() {
+#if LIBCURL_VERSION_NUM >= 0x074700
+    const curl_version_info_data* info = curl_version_info(CURLVERSION_NOW);
+    // 本次修复只改变 Windows + OpenSSL 的默认 Trust Store；Schannel 本身已经使用
+    // Windows Certificate Store，其他 Backend 继续保持 V4.2.6 的原有行为。
+    return info != nullptr && info->version_num >= 0x074700 && IsOpenSslBackend();
+#else
+    return false;
+#endif
+}
+#endif
+
+bool ShouldUseNativeCa(const TlsOptions& tls) {
+#ifdef _WIN32
+    // 显式 caFile/caPath 代表调用方希望收窄或替换默认信任来源。
+    // CURLSSLOPT_NATIVE_CA 与自定义 CA 是“追加”关系，因此这里主动互斥，避免默认 Native CA
+    // 无意扩大显式自定义 CA 的信任集合。
+    return tls.verifyPeer &&
+           tls.useNativeCa &&
+           tls.caFile.empty() &&
+           tls.caPath.empty() &&
+           NativeCaOptionSupportedAtRuntime();
+#else
+    (void)tls;
+    return false;
+#endif
+}
+
+void EmitDebug(const DebugOptions& debug, const std::string& text) noexcept;
+
+void LogTlsConfigurationDebug(CURL* curl, const RequestOptions& options) noexcept {
+    if (!options.debug.enabled || curl == nullptr) {
+        return;
     }
 
-    return ToLowerCopy(info->ssl_version).find("schannel") != std::string::npos;
+    try {
+        const curl_version_info_data* info = curl_version_info(CURLVERSION_NOW);
+        const bool nativeCaApplied = ShouldUseNativeCa(options.tls);
+        std::ostringstream out;
+        out << "curl_ex TLS configuration:\n";
+        out << "  curl: " << ((info && info->version) ? info->version : "<unknown>") << '\n';
+        out << "  SSL: " << ((info && info->ssl_version) ? info->ssl_version : "<none>") << '\n';
+        const std::string activeBackend = ActiveTlsBackendName();
+        out << "  active TLS backend: " << (activeBackend.empty() ? "<unknown>" : activeBackend) << '\n';
+        out << "  verify peer: " << (options.tls.verifyPeer ? "true" : "false") << '\n';
+        out << "  verify host: " << (options.tls.verifyHost ? "true" : "false") << '\n';
+        out << "  native CA requested: " << (options.tls.useNativeCa ? "true" : "false") << '\n';
+        out << "  native CA option applied: " << (nativeCaApplied ? "true" : "false") << '\n';
+        out << "  custom CA file: " << (options.tls.caFile.empty() ? "<none>" : options.tls.caFile) << '\n';
+        out << "  custom CA path: " << (options.tls.caPath.empty() ? "<none>" : options.tls.caPath) << '\n';
+        out << "  pinning: " << (options.tls.pinnedPublicKey.empty() ? "disabled" : "enabled") << '\n';
+
+#if LIBCURL_VERSION_NUM >= 0x075400
+        if (info != nullptr && info->version_num >= 0x075400) {
+            char* defaultCaInfo = nullptr;
+            char* defaultCaPath = nullptr;
+            if (curl_easy_getinfo(curl, CURLINFO_CAINFO, &defaultCaInfo) == CURLE_OK) {
+                out << "  libcurl default CAINFO: " << (defaultCaInfo ? defaultCaInfo : "<null>") << '\n';
+            }
+            if (curl_easy_getinfo(curl, CURLINFO_CAPATH, &defaultCaPath) == CURLE_OK) {
+                out << "  libcurl default CAPATH: " << (defaultCaPath ? defaultCaPath : "<null>") << '\n';
+            }
+        }
+#endif
+        EmitDebug(options.debug, out.str());
+    } catch (...) {
+        // TLS 诊断属于 Debug 旁路能力，任何格式化/查询失败都不能影响请求结果。
+    }
 }
 
 long SchannelRevocationOptions(CertificateRevocationPolicy policy) {
@@ -1750,21 +1855,36 @@ bool ConfigureRequest(CURL* curl,
                 options.tls.verifyHost ? 2L : 0L,
                 response)) return false;
 
+    // CURLOPT_SSL_OPTIONS 是 bitmask，必须一次性合并所有 TLS 行为，不能让后设置的选项
+    // 覆盖前面的证书吊销或 Native CA 策略。
+    long sslOptions = 0L;
+
     // Schannel 默认会执行证书吊销检查。BestEffort 在保留已知吊销证书拦截能力的同时，
     // 允许 CRL/OCSP 分发点缺失或暂时离线，适合常见代理、企业网络和抓包环境。
     if (options.tls.verifyPeer && IsSchannelBackend()) {
-        const long sslOptions = SchannelRevocationOptions(options.tls.revocationPolicy);
-        if (sslOptions != 0L &&
-            !SetOpt(curl, CURLOPT_SSL_OPTIONS, "CURLOPT_SSL_OPTIONS", sslOptions, response)) {
-            return false;
-        }
+        sslOptions |= SchannelRevocationOptions(options.tls.revocationPolicy);
+    }
 
-        // HTTPS 代理本身也需要建立 TLS；复用同一吊销策略，避免代理证书查询失败误伤业务。
-        if (options.proxy && !options.proxy->url.empty() && IsHttpsProxy(*options.proxy) &&
-            sslOptions != 0L &&
-            !SetOpt(curl, CURLOPT_PROXY_SSL_OPTIONS, "CURLOPT_PROXY_SSL_OPTIONS", sslOptions, response)) {
-            return false;
-        }
+#if defined(_WIN32) && LIBCURL_VERSION_NUM >= 0x074700
+    // Windows + OpenSSL 默认从 Windows 原生证书库取得可信根。
+    // Schannel 本身已经使用 Windows 证书库，因此不需要设置 Native CA bit。
+    // 显式 caFile/caPath 时 ShouldUseNativeCa() 返回 false，使自定义 CA 保持可预测的独占语义。
+    if (ShouldUseNativeCa(options.tls)) {
+        sslOptions |= static_cast<long>(CURLSSLOPT_NATIVE_CA);
+    }
+#endif
+
+    if (sslOptions != 0L &&
+        !SetOpt(curl, CURLOPT_SSL_OPTIONS, "CURLOPT_SSL_OPTIONS", sslOptions, response)) {
+        return false;
+    }
+
+    // HTTPS 代理自身也需要 TLS；沿用同一个 SSL_OPTIONS bitmask，避免目标 TLS 与代理 TLS
+    // 在 Native CA / Schannel 吊销策略上出现不一致。
+    if (options.proxy && !options.proxy->url.empty() && IsHttpsProxy(*options.proxy) &&
+        sslOptions != 0L &&
+        !SetOpt(curl, CURLOPT_PROXY_SSL_OPTIONS, "CURLOPT_PROXY_SSL_OPTIONS", sslOptions, response)) {
+        return false;
     }
 
 #if LIBCURL_VERSION_NUM >= 0x072900
@@ -1782,6 +1902,9 @@ bool ConfigureRequest(CURL* curl,
         !SetOpt(curl, CURLOPT_CAINFO, "CURLOPT_CAINFO", options.tls.caFile.c_str(), response)) return false;
     if (!options.tls.caPath.empty() &&
         !SetOpt(curl, CURLOPT_CAPATH, "CURLOPT_CAPATH", options.tls.caPath.c_str(), response)) return false;
+
+    LogTlsConfigurationDebug(curl, options);
+
     if (!options.tls.clientCertificate.empty() &&
         !SetOpt(curl, CURLOPT_SSLCERT, "CURLOPT_SSLCERT", options.tls.clientCertificate.c_str(), response)) return false;
     if (!options.tls.clientCertificateType.empty() &&
@@ -1804,7 +1927,7 @@ bool ConfigureRequest(CURL* curl,
 #endif
     if (!options.tls.crlFile.empty() &&
         !SetOpt(curl, CURLOPT_CRLFILE, "CURLOPT_CRLFILE", options.tls.crlFile.c_str(), response)) return false;
-    // V4.2.6 默认最低 TLS 1.2，避免在 libcurl 8.16.0 之前由运行库/TLS backend 默认值
+    // V4.2.6 起默认最低 TLS 1.2；V4.2.7 继续保持该语义，避免在 libcurl 8.16.0 之前由运行库/TLS backend 默认值
     // 意外允许 TLS 1.0/1.1。调用方仍可显式选择更低版本承担兼容性风险。
     // HTTPS 代理同样应用这一版本边界，否则目标站点安全而代理握手仍可能退回旧 TLS。
     if (options.tls.minVersion != TlsVersion::Default ||
