@@ -1,0 +1,5 @@
+add_subdirectory(client-server)
+add_subdirectory(curl_ex)
+add_subdirectory(jsoncpp_ex)
+add_subdirectory(sys_core)
+add_subdirectory(combined)
