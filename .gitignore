@@ -363,7 +363,7 @@ MigrationBackup/
 FodyWeavers.xsd
 
 # CMake user and generated files
-/CMakeUserPresets.json
+# /CMakeUserPresets.json
 /CMakeFiles/
 /CMakeCache.txt
 /cmake_install.cmake

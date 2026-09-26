@@ -1,0 +1,89 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "x64-debug-local",
+      "displayName": "x64 Debug (Local)",
+      "inherits": "x64-debug",
+      "environment": {
+        "VCPKG_ROOT": "C:/.dev_environment/vcpkg",
+        "VSLANG": "1033"
+      }
+    },
+    {
+      "name": "x64-release-local",
+      "displayName": "x64 Release (Local)",
+      "inherits": "x64-release",
+      "environment": {
+        "VCPKG_ROOT": "C:/.dev_environment/vcpkg",
+        "VSLANG": "1033"
+      }
+    },
+    {
+      "name": "x86-debug-local",
+      "displayName": "x86 Debug (Local)",
+      "inherits": "x86-debug",
+      "environment": {
+        "VCPKG_ROOT": "C:/.dev_environment/vcpkg",
+        "VSLANG": "1033"
+      }
+    },
+    {
+      "name": "x86-release-local",
+      "displayName": "x86 Release (Local)",
+      "inherits": "x86-release",
+      "environment": {
+        "VCPKG_ROOT": "C:/.dev_environment/vcpkg",
+        "VSLANG": "1033"
+      }
+    }
+  ],
+
+  "buildPresets": [
+    {
+      "name": "x64-debug-local",
+      "configurePreset": "x64-debug-local"
+    },
+    {
+      "name": "x64-release-local",
+      "configurePreset": "x64-release-local"
+    },
+    {
+      "name": "x86-debug-local",
+      "configurePreset": "x86-debug-local"
+    },
+    {
+      "name": "x86-release-local",
+      "configurePreset": "x86-release-local"
+    },
+
+    {
+      "name": "x64-debug-install-local",
+      "configurePreset": "x64-debug-local",
+      "targets": [
+        "install"
+      ]
+    },
+    {
+      "name": "x64-release-install-local",
+      "configurePreset": "x64-release-local",
+      "targets": [
+        "install"
+      ]
+    },
+    {
+      "name": "x86-debug-install-local",
+      "configurePreset": "x86-debug-local",
+      "targets": [
+        "install"
+      ]
+    },
+    {
+      "name": "x86-release-install-local",
+      "configurePreset": "x86-release-local",
+      "targets": [
+        "install"
+      ]
+    }
+  ]
+}
