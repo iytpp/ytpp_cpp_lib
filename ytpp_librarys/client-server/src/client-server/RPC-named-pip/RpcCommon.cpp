@@ -1,15 +1,17 @@
 #include "client-server/RPC-named-pip/RpcCommon.h"
 #include <algorithm>
+#include <array>
+#include <bit>
+#include <bcrypt.h>
+#include <cstring>
 #include <ctime>
-#include <functional>
-#include <random>
-#include <sstream>
+#include <limits>
 #include <stdexcept>
 
 namespace ytpp::client_server {
-RpcValue::RpcValue() : value_(_In_ std::monostate{}) {}
+RpcValue::RpcValue() : value_(std::monostate{}) {}
 
-RpcValue::RpcValue(_In_ std::nullptr_t) : value_(_In_ std::monostate{}) {}
+RpcValue::RpcValue(_In_ std::nullptr_t) : value_(std::monostate{}) {}
 
 RpcValue::RpcValue(_In_ bool v) : value_(v) {}
 
@@ -195,28 +197,27 @@ void ByteBufferWriter::WriteBool(_In_ bool value) {
 
 void ByteBufferWriter::WriteDouble(_In_ double value) {
     static_assert(sizeof(double) == 8, "double must be 8 bytes");
-
-    union {
-        double d;
-        std::uint64_t u;
-    } u{};
-
-    u.d = value;
-    WriteUInt64(u.u);
+    WriteUInt64(std::bit_cast<std::uint64_t>(value));
 }
 
 void ByteBufferWriter::WriteString(_In_ const std::string& value) {
+    if (value.size() > (std::numeric_limits<std::uint32_t>::max)())
+        throw std::length_error("RPC string exceeds the protocol limit");
     WriteUInt32(static_cast<std::uint32_t>(value.size()));
     buffer_.insert(buffer_.end(), value.begin(), value.end());
 }
 
 void ByteBufferWriter::WriteWString(_In_ const std::wstring& value) {
+    if (value.size() > (std::numeric_limits<std::uint32_t>::max)())
+        throw std::length_error("RPC wide string exceeds the protocol limit");
     WriteUInt32(static_cast<std::uint32_t>(value.size()));
     const std::uint8_t* p = reinterpret_cast<const std::uint8_t*>(value.data());
     buffer_.insert(buffer_.end(), p, p + value.size() * sizeof(wchar_t));
 }
 
 void ByteBufferWriter::WriteBinary(_In_ const RpcBinary& value) {
+    if (value.size() > (std::numeric_limits<std::uint32_t>::max)())
+        throw std::length_error("RPC binary value exceeds the protocol limit");
     WriteUInt32(static_cast<std::uint32_t>(value.size()));
     buffer_.insert(buffer_.end(), value.begin(), value.end());
 }
@@ -256,6 +257,8 @@ void ByteBufferWriter::WriteRpcValue(_In_ const RpcValue& value) {
         break;
     case RpcValueType::Array: {
         const auto& arr = value.AsArray();
+        if (arr.size() > kRpcMaximumCollectionItems)
+            throw std::length_error("RPC array exceeds the protocol item limit");
         WriteUInt32(static_cast<std::uint32_t>(arr.size()));
         for (const auto& item : arr)
             WriteRpcValue(item);
@@ -263,6 +266,8 @@ void ByteBufferWriter::WriteRpcValue(_In_ const RpcValue& value) {
     }
     case RpcValueType::Object: {
         const auto& obj = value.AsObject();
+        if (obj.size() > kRpcMaximumCollectionItems)
+            throw std::length_error("RPC object exceeds the protocol item limit");
         WriteUInt32(static_cast<std::uint32_t>(obj.size()));
         for (const auto& kv : obj) {
             WriteString(kv.first);
@@ -328,6 +333,8 @@ bool ByteBufferReader::ReadBool(_Out_ bool& value) {
     std::uint8_t v = 0;
     if (!ReadUInt8(v))
         return false;
+    if (v > 1)
+        return false;
     value = (v != 0);
     return true;
 }
@@ -337,13 +344,7 @@ bool ByteBufferReader::ReadDouble(_Out_ double& value) {
     if (!ReadUInt64(u))
         return false;
 
-    union {
-        double d;
-        std::uint64_t u;
-    } tmp{};
-
-    tmp.u = u;
-    value = tmp.d;
+    value = std::bit_cast<double>(u);
     return true;
 }
 
@@ -351,7 +352,7 @@ bool ByteBufferReader::ReadString(_Out_ std::string& value) {
     std::uint32_t len = 0;
     if (!ReadUInt32(len))
         return false;
-    if (offset_ + len > buffer_.size())
+    if (len > buffer_.size() - offset_)
         return false;
     value.assign(reinterpret_cast<const char*>(buffer_.data() + offset_), len);
     offset_ += len;
@@ -362,10 +363,14 @@ bool ByteBufferReader::ReadWString(_Out_ std::wstring& value) {
     std::uint32_t charCount = 0;
     if (!ReadUInt32(charCount))
         return false;
-    std::size_t byteCount = static_cast<std::size_t>(charCount) * sizeof(wchar_t);
-    if (offset_ + byteCount > buffer_.size())
+    if (charCount > (std::numeric_limits<std::size_t>::max)() / sizeof(wchar_t))
         return false;
-    value.assign(reinterpret_cast<const wchar_t*>(buffer_.data() + offset_), charCount);
+    std::size_t byteCount = static_cast<std::size_t>(charCount) * sizeof(wchar_t);
+    if (byteCount > buffer_.size() - offset_)
+        return false;
+    value.resize(charCount);
+    if (byteCount != 0)
+        std::memcpy(value.data(), buffer_.data() + offset_, byteCount);
     offset_ += byteCount;
     return true;
 }
@@ -374,7 +379,7 @@ bool ByteBufferReader::ReadBinary(_Out_ RpcBinary& value) {
     std::uint32_t len = 0;
     if (!ReadUInt32(len))
         return false;
-    if (offset_ + len > buffer_.size())
+    if (len > buffer_.size() - offset_)
         return false;
     value.assign(buffer_.begin() + offset_, buffer_.begin() + offset_ + len);
     offset_ += len;
@@ -382,6 +387,12 @@ bool ByteBufferReader::ReadBinary(_Out_ RpcBinary& value) {
 }
 
 bool ByteBufferReader::ReadRpcValue(_Out_ RpcValue& value) {
+    return ReadRpcValueImpl(value, 0);
+}
+
+bool ByteBufferReader::ReadRpcValueImpl(_Out_ RpcValue& value, _In_ std::uint32_t depth) {
+    if (depth > kRpcMaximumNestingDepth)
+        return false;
     std::uint8_t typeRaw = 0;
     if (!ReadUInt8(typeRaw))
         return false;
@@ -458,11 +469,13 @@ bool ByteBufferReader::ReadRpcValue(_Out_ RpcValue& value) {
         std::uint32_t count = 0;
         if (!ReadUInt32(count))
             return false;
+        if (count > kRpcMaximumCollectionItems)
+            return false;
         RpcArray arr;
         arr.reserve(count);
         for (std::uint32_t i = 0; i < count; ++i) {
             RpcValue item;
-            if (!ReadRpcValue(item))
+            if (!ReadRpcValueImpl(item, depth + 1))
                 return false;
             arr.push_back(item);
         }
@@ -473,13 +486,15 @@ bool ByteBufferReader::ReadRpcValue(_Out_ RpcValue& value) {
         std::uint32_t count = 0;
         if (!ReadUInt32(count))
             return false;
+        if (count > kRpcMaximumCollectionItems)
+            return false;
         RpcObject obj;
         for (std::uint32_t i = 0; i < count; ++i) {
             std::string key;
             RpcValue item;
             if (!ReadString(key))
                 return false;
-            if (!ReadRpcValue(item))
+            if (!ReadRpcValueImpl(item, depth + 1))
                 return false;
             obj.emplace(key, item);
         }
@@ -491,10 +506,16 @@ bool ByteBufferReader::ReadRpcValue(_Out_ RpcValue& value) {
     }
 }
 
+bool ByteBufferReader::IsAtEnd() const noexcept {
+    return offset_ == buffer_.size();
+}
+
 std::vector<std::uint8_t> SerializeRequest(_In_ const RpcRequest& request) {
     ByteBufferWriter w;
     w.WriteString(request.functionName);
 
+    if (request.args.size() > kRpcMaximumCollectionItems)
+        throw std::length_error("RPC request exceeds the argument limit");
     w.WriteUInt32(static_cast<std::uint32_t>(request.args.size()));
     for (const auto& arg : request.args)
         w.WriteRpcValue(arg);
@@ -506,6 +527,8 @@ std::vector<std::uint8_t> SerializeRequest(_In_ const RpcRequest& request) {
 }
 
 bool DeserializeRequest(_In_ const std::vector<std::uint8_t>& data, _Out_ RpcRequest& request) {
+    if (data.size() > kRpcMaximumMessageSize)
+        return false;
     ByteBufferReader r(data);
 
     if (!r.ReadString(request.functionName))
@@ -513,6 +536,8 @@ bool DeserializeRequest(_In_ const std::vector<std::uint8_t>& data, _Out_ RpcReq
 
     std::uint32_t argCount = 0;
     if (!r.ReadUInt32(argCount))
+        return false;
+    if (argCount > kRpcMaximumCollectionItems)
         return false;
 
     request.args.clear();
@@ -531,12 +556,14 @@ bool DeserializeRequest(_In_ const std::vector<std::uint8_t>& data, _Out_ RpcReq
     if (!r.ReadString(request.signature))
         return false;
 
-    return true;
+    return r.IsAtEnd();
 }
 
 std::vector<std::uint8_t> SerializeResult(_In_ const RpcResult& result) {
     ByteBufferWriter w;
     w.WriteBool(result.success);
+    if (result.returnValues.size() > kRpcMaximumCollectionItems)
+        throw std::length_error("RPC result exceeds the value limit");
     w.WriteUInt32(static_cast<std::uint32_t>(result.returnValues.size()));
     for (const auto& v : result.returnValues)
         w.WriteRpcValue(v);
@@ -545,12 +572,16 @@ std::vector<std::uint8_t> SerializeResult(_In_ const RpcResult& result) {
 }
 
 bool DeserializeResult(_In_ const std::vector<std::uint8_t>& data, _Out_ RpcResult& result) {
+    if (data.size() > kRpcMaximumMessageSize)
+        return false;
     ByteBufferReader r(data);
     if (!r.ReadBool(result.success))
         return false;
 
     std::uint32_t count = 0;
     if (!r.ReadUInt32(count))
+        return false;
+    if (count > kRpcMaximumCollectionItems)
         return false;
 
     result.returnValues.clear();
@@ -564,94 +595,78 @@ bool DeserializeResult(_In_ const std::vector<std::uint8_t>& data, _Out_ RpcResu
 
     if (!r.ReadString(result.errorMessage))
         return false;
-    return true;
+    return r.IsAtEnd();
 }
 
 std::string BuildCanonicalRequestText(_In_ const RpcRequest& request) {
-    std::ostringstream oss;
-    oss << "func=" << request.functionName << ";";
-    oss << "ts=" << request.timestamp << ";";
-    oss << "nonce=" << request.nonce << ";";
-    oss << "argc=" << request.args.size() << ";";
-
-    std::function<void(const RpcValue&)> dumpValue = [&](const RpcValue& v) {
-        oss << "type=" << static_cast<int>(v.GetType()) << ";";
-        switch (v.GetType()) {
-        case RpcValueType::Null:
-            oss << "null;";
-            break;
-        case RpcValueType::Bool:
-            oss << (v.AsBool() ? "true;" : "false;");
-            break;
-        case RpcValueType::Int32:
-            oss << v.AsInt32() << ";";
-            break;
-        case RpcValueType::Int64:
-            oss << v.AsInt64() << ";";
-            break;
-        case RpcValueType::UInt32:
-            oss << v.AsUInt32() << ";";
-            break;
-        case RpcValueType::UInt64:
-            oss << v.AsUInt64() << ";";
-            break;
-        case RpcValueType::Double:
-            oss << v.AsDouble() << ";";
-            break;
-        case RpcValueType::String:
-            oss << v.AsString().size() << ":" << v.AsString() << ";";
-            break;
-        case RpcValueType::WString: {
-            auto s = WideToUtf8(v.AsWString());
-            oss << s.size() << ":" << s << ";";
-            break;
-        }
-        case RpcValueType::Binary:
-            oss << "binlen=" << v.AsBinary().size() << ";";
-            break;
-        case RpcValueType::Array:
-            oss << "arrcount=" << v.AsArray().size() << ";";
-            for (const auto& x : v.AsArray())
-                dumpValue(x);
-            break;
-        case RpcValueType::Object:
-            oss << "objcount=" << v.AsObject().size() << ";";
-            for (const auto& kv : v.AsObject()) {
-                oss << kv.first << "=";
-                dumpValue(kv.second);
-            }
-            break;
-        }
-    };
-
-    for (const auto& arg : request.args)
-        dumpValue(arg);
-
-    return oss.str();
+    RpcRequest unsignedRequest = request;
+    unsignedRequest.signature.clear();
+    const auto bytes = SerializeRequest(unsignedRequest);
+    return std::string(reinterpret_cast<const char*>(bytes.data()), bytes.size());
 }
 
-bool WriteMessageToPipe(_In_ HANDLE hPipe, _In_ const std::vector<std::uint8_t>& data) {
-    DWORD written = 0;
-    std::uint32_t len = static_cast<std::uint32_t>(data.size());
+namespace {
+bool WriteAll(_In_ HANDLE pipe, _In_reads_bytes_(size) const void* data, _In_ std::size_t size) {
+    const auto* current = static_cast<const std::uint8_t*>(data);
+    while (size > 0) {
+        DWORD written = 0;
+        const DWORD chunk = static_cast<DWORD>((std::min)(size, static_cast<std::size_t>((std::numeric_limits<DWORD>::max)())));
+        if (!::WriteFile(pipe, current, chunk, &written, nullptr) || written == 0)
+            return false;
+        current += written;
+        size -= written;
+    }
+    return true;
+}
 
-    if (!::WriteFile(hPipe, &len, sizeof(len), &written, nullptr) || written != sizeof(len))
+bool ReadExact(_In_ HANDLE pipe, _Out_writes_bytes_(size) void* data, _In_ std::size_t size) {
+    auto* current = static_cast<std::uint8_t*>(data);
+    while (size > 0) {
+        DWORD readBytes = 0;
+        const DWORD chunk = static_cast<DWORD>((std::min)(size, static_cast<std::size_t>((std::numeric_limits<DWORD>::max)())));
+        if (!::ReadFile(pipe, current, chunk, &readBytes, nullptr) || readBytes == 0)
+            return false;
+        current += readBytes;
+        size -= readBytes;
+    }
+    return true;
+}
+} // namespace
+
+bool WriteMessageToPipe(_In_ HANDLE hPipe, _In_ const std::vector<std::uint8_t>& data) {
+    if (data.size() > kRpcMaximumMessageSize) {
+        ::SetLastError(ERROR_FILE_TOO_LARGE);
+        return false;
+    }
+    const std::uint32_t len = static_cast<std::uint32_t>(data.size());
+    if (!WriteAll(hPipe, &kRpcProtocolMagic, sizeof(kRpcProtocolMagic)) ||
+        !WriteAll(hPipe, &kRpcProtocolVersion, sizeof(kRpcProtocolVersion)) || !WriteAll(hPipe, &len, sizeof(len)))
         return false;
 
     if (len == 0)
         return ::FlushFileBuffers(hPipe) != FALSE;
 
-    if (!::WriteFile(hPipe, data.data(), len, &written, nullptr) || written != len)
+    if (!WriteAll(hPipe, data.data(), len))
         return false;
 
     return ::FlushFileBuffers(hPipe) != FALSE;
 }
 
 bool ReadMessageFromPipe(_In_ HANDLE hPipe, _Out_ std::vector<std::uint8_t>& data) {
-    DWORD readBytes = 0;
+    std::uint32_t magic = 0;
+    std::uint32_t version = 0;
     std::uint32_t len = 0;
-
-    if (!::ReadFile(hPipe, &len, sizeof(len), &readBytes, nullptr) || readBytes != sizeof(len))
+    if (!ReadExact(hPipe, &magic, sizeof(magic)) || !ReadExact(hPipe, &version, sizeof(version)) ||
+        !ReadExact(hPipe, &len, sizeof(len)))
         return false;
+    if (magic != kRpcProtocolMagic || version != kRpcProtocolVersion) {
+        ::SetLastError(ERROR_INVALID_DATA);
+        return false;
+    }
+    if (len > kRpcMaximumMessageSize) {
+        ::SetLastError(ERROR_FILE_TOO_LARGE);
+        return false;
+    }
 
     data.clear();
     data.resize(len);
@@ -659,31 +674,37 @@ bool ReadMessageFromPipe(_In_ HANDLE hPipe, _Out_ std::vector<std::uint8_t>& dat
     if (len == 0)
         return true;
 
-    if (!::ReadFile(hPipe, data.data(), len, &readBytes, nullptr) || readBytes != len)
-        return false;
-
-    return true;
+    return ReadExact(hPipe, data.data(), len);
 }
 
 std::wstring Utf8ToWide(_In_ const std::string& str) {
     if (str.empty())
         return L"";
-    int len = ::MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, nullptr, 0);
+    if (str.size() > static_cast<std::size_t>((std::numeric_limits<int>::max)()))
+        return L"";
+    const int sourceLength = static_cast<int>(str.size());
+    int len = ::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, str.data(), sourceLength, nullptr, 0);
     if (len <= 0)
         return L"";
-    std::wstring out(len - 1, L'\0');
-    ::MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, &out[0], len);
+    std::wstring out(static_cast<std::size_t>(len), L'\0');
+    if (::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, str.data(), sourceLength, out.data(), len) != len)
+        return L"";
     return out;
 }
 
 std::string WideToUtf8(_In_ const std::wstring& str) {
     if (str.empty())
         return "";
-    int len = ::WideCharToMultiByte(CP_UTF8, 0, str.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    if (str.size() > static_cast<std::size_t>((std::numeric_limits<int>::max)()))
+        return "";
+    const int sourceLength = static_cast<int>(str.size());
+    int len = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, str.data(), sourceLength, nullptr, 0, nullptr, nullptr);
     if (len <= 0)
         return "";
-    std::string out(len - 1, '\0');
-    ::WideCharToMultiByte(CP_UTF8, 0, str.c_str(), -1, &out[0], len, nullptr, nullptr);
+    std::string out(static_cast<std::size_t>(len), '\0');
+    if (::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, str.data(), sourceLength, out.data(), len, nullptr,
+                              nullptr) != len)
+        return "";
     return out;
 }
 
@@ -692,14 +713,17 @@ std::int64_t GetCurrentUnixTimestamp() {
 }
 
 std::string GenerateNonce() {
-    static thread_local std::mt19937_64 rng(std::random_device{}());
-    std::uniform_int_distribution<std::uint64_t> dist;
-
-    std::uint64_t a = dist(rng);
-    std::uint64_t b = dist(rng);
-    char buf[64] = {};
-    sprintf_s(buf, "%016llx%016llx", static_cast<unsigned long long>(a), static_cast<unsigned long long>(b));
-    return std::string(buf);
+    std::array<std::uint8_t, 16> bytes{};
+    if (!BCRYPT_SUCCESS(::BCryptGenRandom(nullptr, bytes.data(), static_cast<ULONG>(bytes.size()),
+                                          BCRYPT_USE_SYSTEM_PREFERRED_RNG)))
+        throw std::runtime_error("BCryptGenRandom failed while generating RPC nonce");
+    constexpr char kHex[] = "0123456789abcdef";
+    std::string nonce(bytes.size() * 2, '\0');
+    for (std::size_t i = 0; i < bytes.size(); ++i) {
+        nonce[i * 2] = kHex[bytes[i] >> 4];
+        nonce[i * 2 + 1] = kHex[bytes[i] & 0x0F];
+    }
+    return nonce;
 }
 
 std::wstring ToLower(_In_ const std::wstring& s) {

@@ -20,8 +20,8 @@ NamedPipeRpcServer::~NamedPipeRpcServer() {
     Stop();
 }
 
-void NamedPipeRpcServer::SetLogger(_Inout_ RpcLogger* logger) {
-    logger_ = logger;
+void NamedPipeRpcServer::SetLogger(_In_opt_ RpcLogger* logger) {
+    logger_.store(logger);
 }
 
 void NamedPipeRpcServer::RegisterFunction(_In_ const std::string& functionName, _In_ PermissionLevel permission,
@@ -36,6 +36,7 @@ void NamedPipeRpcServer::AddWhitelistProcess(_In_ const std::wstring& processPat
 }
 
 void NamedPipeRpcServer::SetPipeSecuritySddl(_In_ const std::wstring& sddl) {
+    std::lock_guard<std::mutex> lock(configurationMutex_);
     pipeSecuritySddl_ = sddl;
 }
 
@@ -43,8 +44,34 @@ bool NamedPipeRpcServer::Start() {
     if (running_.exchange(true))
         return false;
 
-    for (std::size_t i = 0; i < workerCount_; ++i)
-        workers_.emplace_back(&NamedPipeRpcServer::WorkerLoop, this);
+    {
+        std::lock_guard<std::mutex> lock(configurationMutex_);
+        if (!pipeSecuritySddl_.empty()) {
+            PSECURITY_DESCRIPTOR descriptor = nullptr;
+            if (!::ConvertStringSecurityDescriptorToSecurityDescriptorW(pipeSecuritySddl_.c_str(), SDDL_REVISION_1,
+                                                                         &descriptor, nullptr)) {
+                running_ = false;
+                LogError(L"Invalid pipe security SDDL.");
+                return false;
+            }
+            ::LocalFree(descriptor);
+        }
+    }
+
+    try {
+        for (std::size_t i = 0; i < workerCount_; ++i)
+            workers_.emplace_back(&NamedPipeRpcServer::WorkerLoop, this);
+    } catch (...) {
+        running_ = false;
+        for (auto& worker : workers_)
+            ::CancelSynchronousIo(worker.native_handle());
+        for (auto& worker : workers_) {
+            if (worker.joinable())
+                worker.join();
+        }
+        workers_.clear();
+        return false;
+    }
 
     LogInfo(L"Server started.");
     return true;
@@ -53,6 +80,9 @@ bool NamedPipeRpcServer::Start() {
 void NamedPipeRpcServer::Stop() {
     if (!running_.exchange(false))
         return;
+
+    for (auto& worker : workers_)
+        ::CancelSynchronousIo(worker.native_handle());
 
     for (std::size_t i = 0; i < workerCount_; ++i) {
         HANDLE hPipe =
@@ -75,14 +105,20 @@ HANDLE NamedPipeRpcServer::CreatePipeInstance() const {
     SECURITY_DESCRIPTOR* pSd = nullptr;
     SECURITY_ATTRIBUTES* pSa = nullptr;
 
-    if (!pipeSecuritySddl_.empty()) {
+    std::wstring sddl;
+    {
+        std::lock_guard<std::mutex> lock(configurationMutex_);
+        sddl = pipeSecuritySddl_;
+    }
+    if (!sddl.empty()) {
         if (::ConvertStringSecurityDescriptorToSecurityDescriptorW(
-                pipeSecuritySddl_.c_str(), SDDL_REVISION_1, reinterpret_cast<PSECURITY_DESCRIPTOR*>(&pSd), nullptr)) {
+                sddl.c_str(), SDDL_REVISION_1, reinterpret_cast<PSECURITY_DESCRIPTOR*>(&pSd), nullptr)) {
             sa.nLength = sizeof(sa);
             sa.lpSecurityDescriptor = pSd;
             sa.bInheritHandle = FALSE;
             pSa = &sa;
-        }
+        } else
+            return INVALID_HANDLE_VALUE;
     }
 
     DWORD openMode = PIPE_ACCESS_DUPLEX;
@@ -223,7 +259,7 @@ void NamedPipeRpcServer::WorkerLoop() {
     while (running_) {
         HANDLE hPipe = CreatePipeInstance();
         if (hPipe == INVALID_HANDLE_VALUE) {
-            Sleep(50);
+            ::Sleep(50);
             continue;
         }
 
@@ -271,24 +307,25 @@ void NamedPipeRpcServer::WorkerLoop() {
                 break;
         }
 
-        ::FlushFileBuffers(hPipe);
+        if (running_)
+            ::FlushFileBuffers(hPipe);
         ::DisconnectNamedPipe(hPipe);
         ::CloseHandle(hPipe);
     }
 }
 
 void NamedPipeRpcServer::LogInfo(_In_ const std::wstring& msg) {
-    if (logger_)
-        logger_->Info(msg);
+    if (RpcLogger* logger = logger_.load())
+        logger->Info(msg);
 }
 
 void NamedPipeRpcServer::LogWarn(_In_ const std::wstring& msg) {
-    if (logger_)
-        logger_->Warn(msg);
+    if (RpcLogger* logger = logger_.load())
+        logger->Warn(msg);
 }
 
 void NamedPipeRpcServer::LogError(_In_ const std::wstring& msg) {
-    if (logger_)
-        logger_->Error(msg);
+    if (RpcLogger* logger = logger_.load())
+        logger->Error(msg);
 }
 } // namespace ytpp::client_server

@@ -18,19 +18,71 @@
 #include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <filesystem>
 #include <iomanip>
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <utility>
+#include <windows.h>
 
 namespace ytpp::sys_core::encryption {
 
 OpenSslException::OpenSslException(_In_ const std::string& msg) : std::runtime_error(msg) {}
 
 namespace {
+
+constexpr std::uint32_t kMaximumContainerIterations = 10'000'000;
+constexpr std::uint32_t kMaximumContainerSaltLength = 1024;
+constexpr std::uint32_t kMaximumContainerIvLength = 64;
+constexpr std::uint32_t kMaximumContainerTagLength = 64;
+
+std::string MakeTemporaryOutputPath(_In_ const std::string& outputPath) {
+    std::array<unsigned char, 8> random{};
+    if (::RAND_bytes(random.data(), static_cast<int>(random.size())) != 1)
+        throw OpenSslException("RAND_bytes failed while creating a temporary output path");
+    static constexpr char kHex[] = "0123456789abcdef";
+    std::string suffix;
+    suffix.reserve(random.size() * 2);
+    for (unsigned char byte : random) {
+        suffix.push_back(kHex[byte >> 4]);
+        suffix.push_back(kHex[byte & 0x0F]);
+    }
+    return outputPath + ".ytpp-" + suffix + ".tmp";
+}
+
+class AuthenticatedOutputFile {
+  public:
+    explicit AuthenticatedOutputFile(_In_ const std::string& finalPath)
+        : finalPath_(finalPath), temporaryPath_(MakeTemporaryOutputPath(finalPath)) {}
+
+    ~AuthenticatedOutputFile() {
+        if (!committed_) {
+            std::error_code ignored;
+            std::filesystem::remove(temporaryPath_, ignored);
+        }
+    }
+
+    [[nodiscard]] const std::string& TemporaryPath() const noexcept {
+        return temporaryPath_;
+    }
+
+    void Commit() {
+        if (!::MoveFileExA(temporaryPath_.c_str(), finalPath_.c_str(),
+                           MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+            throw OpenSslException("Failed to publish authenticated output file, error=" +
+                                   std::to_string(::GetLastError()));
+        committed_ = true;
+    }
+
+  private:
+    std::string finalPath_;
+    std::string temporaryPath_;
+    bool committed_ = false;
+};
 
 const unsigned char* AsUnsignedBytes(_In_ const void* p) {
     return static_cast<const unsigned char*>(p);
@@ -645,15 +697,17 @@ FileEncryptResult EncryptFileAes256GcmCore(_In_ const std::string& inputPath, _I
 }
 
 void DecryptFileAes256GcmCore(_Inout_ std::ifstream& ifs, _In_ std::uint64_t cipherSize,
-                              _In_ const std::string& outputPath, _In_ const Bytes& key, _In_ const Bytes& iv,
-                              _In_ const Bytes& tag, _In_ const Bytes& aad, _In_ std::size_t chunkSize) {
+                               _In_ const std::string& outputPath, _In_ const Bytes& key, _In_ const Bytes& iv,
+                               _In_ const Bytes& tag, _In_ const Bytes& aad, _In_ std::size_t chunkSize,
+                               _In_ std::optional<std::uint64_t> expectedPlainSize = std::nullopt) {
     EnsureNotEmptyPath(outputPath, "DecryptFileAes256GcmCore");
     EnsureKeyLength(key, 32, "DecryptFileAes256GcmCore");
     Ensure(!iv.empty(), "DecryptFileAes256GcmCore: iv must not be empty");
     Ensure(!tag.empty(), "DecryptFileAes256GcmCore: tag must not be empty");
     Ensure(chunkSize > 0, "DecryptFileAes256GcmCore: chunkSize must be > 0");
 
-    std::ofstream ofs(outputPath, std::ios::binary | std::ios::trunc);
+    AuthenticatedOutputFile authenticatedOutput(outputPath);
+    std::ofstream ofs(authenticatedOutput.TemporaryPath(), std::ios::binary | std::ios::trunc);
     if (!ofs)
         throw OpenSslException("DecryptFileAes256GcmCore: cannot open output file: " + outputPath);
 
@@ -728,6 +782,16 @@ void DecryptFileAes256GcmCore(_Inout_ std::ifstream& ifs, _In_ std::uint64_t cip
     }
 
     EVP_CIPHER_CTX_free(ctx);
+    ofs.close();
+    if (!ofs)
+        throw OpenSslException("DecryptFileAes256GcmCore: failed to finalize output file");
+    if (expectedPlainSize) {
+        std::error_code sizeError;
+        const std::uint64_t outputSize = std::filesystem::file_size(authenticatedOutput.TemporaryPath(), sizeError);
+        if (sizeError || outputSize != *expectedPlainSize)
+            throw OpenSslException("DecryptFileAes256GcmCore: plaintext size mismatch");
+    }
+    authenticatedOutput.Commit();
 }
 
 struct PasswordContainerHeaderV1 {
@@ -742,23 +806,73 @@ struct PasswordContainerHeaderV1 {
     std::uint64_t plainSize;
 };
 
-constexpr char kContainerMagic[8] = {'Y', 'T', 'P', 'P', 'E', 'N', 'C', '1'};
-constexpr std::uint32_t kContainerVersion = 1;
+constexpr char kContainerMagic[8] = {'Y', 'T', 'P', 'P', 'E', 'N', 'C', '2'};
+constexpr std::uint32_t kContainerVersion = 2;
 constexpr std::uint32_t kContainerKdfPbkdf2Sha256 = 1;
 constexpr std::uint32_t kContainerCipherAes256Gcm = 1;
 
+void AppendUInt32(_Inout_ Bytes& bytes, _In_ std::uint32_t value) {
+    for (int index = 0; index < 4; ++index)
+        bytes.push_back(static_cast<unsigned char>((value >> (index * 8)) & 0xFF));
+}
+
+void AppendUInt64(_Inout_ Bytes& bytes, _In_ std::uint64_t value) {
+    for (int index = 0; index < 8; ++index)
+        bytes.push_back(static_cast<unsigned char>((value >> (index * 8)) & 0xFF));
+}
+
+Bytes SerializeContainerHeader(_In_ const PasswordContainerHeaderV1& header) {
+    Bytes bytes(header.magic, header.magic + sizeof(header.magic));
+    AppendUInt32(bytes, header.version);
+    AppendUInt32(bytes, header.kdfId);
+    AppendUInt32(bytes, header.cipherId);
+    AppendUInt32(bytes, header.iterations);
+    AppendUInt32(bytes, header.saltLength);
+    AppendUInt32(bytes, header.ivLength);
+    AppendUInt32(bytes, header.tagLength);
+    AppendUInt64(bytes, header.plainSize);
+    return bytes;
+}
+
+std::uint32_t ReadUInt32(_In_ const Bytes& bytes, _Inout_ std::size_t& offset) {
+    std::uint32_t value = 0;
+    for (int index = 0; index < 4; ++index)
+        value |= static_cast<std::uint32_t>(bytes[offset++]) << (index * 8);
+    return value;
+}
+
+std::uint64_t ReadUInt64(_In_ const Bytes& bytes, _Inout_ std::size_t& offset) {
+    std::uint64_t value = 0;
+    for (int index = 0; index < 8; ++index)
+        value |= static_cast<std::uint64_t>(bytes[offset++]) << (index * 8);
+    return value;
+}
+
 void WriteContainerHeader(_Inout_ std::ofstream& ofs, _In_ const PasswordContainerHeaderV1& header) {
-    ofs.write(reinterpret_cast<const char*>(&header), sizeof(header));
+    const Bytes bytes = SerializeContainerHeader(header);
+    ofs.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
     if (!ofs)
         throw OpenSslException("WriteContainerHeader: failed");
 }
 
-PasswordContainerHeaderV1 ReadContainerHeader(_Inout_ std::ifstream& ifs) {
-    PasswordContainerHeaderV1 header{};
-    ifs.read(reinterpret_cast<char*>(&header), sizeof(header));
-    if (ifs.gcount() != static_cast<std::streamsize>(sizeof(header))) {
+PasswordContainerHeaderV1 ReadContainerHeader(_Inout_ std::ifstream& ifs, _Out_ Bytes& encodedHeader) {
+    constexpr std::size_t kEncodedHeaderSize = 44;
+    encodedHeader.resize(kEncodedHeaderSize);
+    ifs.read(reinterpret_cast<char*>(encodedHeader.data()), static_cast<std::streamsize>(encodedHeader.size()));
+    if (ifs.gcount() != static_cast<std::streamsize>(encodedHeader.size()))
         throw OpenSslException("ReadContainerHeader: file is too short or invalid");
-    }
+
+    PasswordContainerHeaderV1 header{};
+    std::memcpy(header.magic, encodedHeader.data(), sizeof(header.magic));
+    std::size_t offset = sizeof(header.magic);
+    header.version = ReadUInt32(encodedHeader, offset);
+    header.kdfId = ReadUInt32(encodedHeader, offset);
+    header.cipherId = ReadUInt32(encodedHeader, offset);
+    header.iterations = ReadUInt32(encodedHeader, offset);
+    header.saltLength = ReadUInt32(encodedHeader, offset);
+    header.ivLength = ReadUInt32(encodedHeader, offset);
+    header.tagLength = ReadUInt32(encodedHeader, offset);
+    header.plainSize = ReadUInt64(encodedHeader, offset);
     if (std::memcmp(header.magic, kContainerMagic, sizeof(kContainerMagic)) != 0) {
         throw OpenSslException("ReadContainerHeader: invalid container magic");
     }
@@ -768,7 +882,10 @@ PasswordContainerHeaderV1 ReadContainerHeader(_Inout_ std::ifstream& ifs) {
     if (header.kdfId != kContainerKdfPbkdf2Sha256 || header.cipherId != kContainerCipherAes256Gcm) {
         throw OpenSslException("ReadContainerHeader: unsupported container algorithm");
     }
-    if (header.saltLength == 0 || header.ivLength == 0 || header.tagLength == 0) {
+    if (header.iterations == 0 || header.iterations > kMaximumContainerIterations || header.saltLength == 0 ||
+        header.saltLength > kMaximumContainerSaltLength || header.ivLength == 0 ||
+        header.ivLength > kMaximumContainerIvLength || header.tagLength == 0 ||
+        header.tagLength > kMaximumContainerTagLength) {
         throw OpenSslException("ReadContainerHeader: invalid salt/iv/tag length in container");
     }
     return header;
@@ -1124,10 +1241,10 @@ Bytes DecryptAes256Gcm(_In_ const CipherPack& pack, _In_ const Bytes& key, _In_ 
 }
 
 std::string EncryptAes(_In_ std::string text, _In_ std::string password) {
-    // password -> 32�ֽ� AES-256 Key
+    // 使用SHA-256把口令派生为32字节AES-256密钥。
     Bytes key = Sha256(password);
 
-    // ÿ��������� 12 �ֽ� GCM IV
+    // 每次加密生成独立的12字节GCM IV。
     Bytes iv = RandomBytes(12);
 
     // string -> Bytes
@@ -1135,7 +1252,7 @@ std::string EncryptAes(_In_ std::string text, _In_ std::string password) {
 
     CipherPack pack = EncryptAes256Gcm(plaintext, key, iv);
 
-    // ���ո�ʽ��
+    // 输出格式为IV、认证标签和密文的顺序拼接。
     // IV(12) + TAG(16) + Ciphertext
     Bytes result;
 
@@ -1157,7 +1274,7 @@ std::string DecryptAes(_In_ std::string text, _In_ std::string password) {
     if (data.size() < kIvSize + kTagSize)
         throw std::runtime_error("Invalid AES encrypted data");
 
-    // password -> ��ͬ�� 32�ֽ� AES-256 Key
+    // 使用与加密端相同的方式派生32字节AES-256密钥。
     Bytes key = Sha256(password);
 
     CipherPack pack;
@@ -1541,7 +1658,12 @@ void FileCrypto::EncryptFileToContainerWithPasswordAes256GcmPbkdf2(_In_ const st
                                                                    _In_ std::string_view password,
                                                                    _In_ const Bytes& salt, _In_ int iterations,
                                                                    _In_ std::size_t chunkSize) {
+    Ensure(chunkSize > 0, "FileCrypto::EncryptFileToContainerWithPasswordAes256GcmPbkdf2: chunkSize must be > 0");
+    Ensure(iterations > 0 && iterations <= static_cast<int>(kMaximumContainerIterations),
+           "FileCrypto::EncryptFileToContainerWithPasswordAes256GcmPbkdf2: invalid iteration count");
     Bytes actualSalt = salt.empty() ? RandomBytes(16) : salt;
+    Ensure(actualSalt.size() <= kMaximumContainerSaltLength,
+           "FileCrypto::EncryptFileToContainerWithPasswordAes256GcmPbkdf2: salt is too large");
     Bytes iv = RandomBytes(12);
     Bytes key = DeriveAes256KeyFromPasswordPbkdf2Sha256(password, actualSalt, iterations);
 
@@ -1578,6 +1700,10 @@ void FileCrypto::EncryptFileToContainerWithPasswordAes256GcmPbkdf2(_In_ const st
         throw OpenSslException(
             "FileCrypto::EncryptFileToContainerWithPasswordAes256GcmPbkdf2: failed to write container header body");
 
+    Bytes authenticatedMetadata = SerializeContainerHeader(header);
+    authenticatedMetadata.insert(authenticatedMetadata.end(), actualSalt.begin(), actualSalt.end());
+    authenticatedMetadata.insert(authenticatedMetadata.end(), iv.begin(), iv.end());
+
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     if (!ctx)
         ThrowLastError("EVP_CIPHER_CTX_new(container encrypt)");
@@ -1589,6 +1715,13 @@ void FileCrypto::EncryptFileToContainerWithPasswordAes256GcmPbkdf2(_In_ const st
     if (EVP_EncryptInit_ex(ctx, nullptr, nullptr, key.data(), iv.data()) != 1) {
         EVP_CIPHER_CTX_free(ctx);
         ThrowLastError("Container encrypt/EVP_EncryptInit_ex(phase2)");
+    }
+
+    int aadLength = 0;
+    if (EVP_EncryptUpdate(ctx, nullptr, &aadLength, authenticatedMetadata.data(),
+                          static_cast<int>(authenticatedMetadata.size())) != 1) {
+        EVP_CIPHER_CTX_free(ctx);
+        ThrowLastError("Container encrypt/AAD");
     }
 
     Bytes inputBuffer(chunkSize);
@@ -1650,7 +1783,9 @@ void FileCrypto::DecryptFileFromContainerWithPasswordAes256GcmPbkdf2(_In_ const 
             "FileCrypto::DecryptFileFromContainerWithPasswordAes256GcmPbkdf2: cannot open input file: " +
             containerInputPath);
 
-    PasswordContainerHeaderV1 header = ReadContainerHeader(ifs);
+    Ensure(chunkSize > 0, "FileCrypto::DecryptFileFromContainerWithPasswordAes256GcmPbkdf2: chunkSize must be > 0");
+    Bytes encodedHeader;
+    PasswordContainerHeaderV1 header = ReadContainerHeader(ifs, encodedHeader);
     Bytes salt(header.saltLength);
     Bytes iv(header.ivLength);
     Bytes tag(header.tagLength);
@@ -1663,7 +1798,7 @@ void FileCrypto::DecryptFileFromContainerWithPasswordAes256GcmPbkdf2(_In_ const 
     }
 
     std::uint64_t totalSize = GetFileSize(ifs);
-    std::uint64_t metadataSize = sizeof(PasswordContainerHeaderV1) + salt.size() + iv.size() + tag.size();
+    std::uint64_t metadataSize = encodedHeader.size() + salt.size() + iv.size() + tag.size();
     if (totalSize < metadataSize) {
         throw OpenSslException(
             "FileCrypto::DecryptFileFromContainerWithPasswordAes256GcmPbkdf2: invalid container size");
@@ -1679,10 +1814,14 @@ void FileCrypto::DecryptFileFromContainerWithPasswordAes256GcmPbkdf2(_In_ const 
 
     Bytes key = DeriveAes256KeyFromPasswordPbkdf2Sha256(password, salt, static_cast<int>(header.iterations));
 
-    auto cipherPosition = static_cast<std::streamoff>(sizeof(PasswordContainerHeaderV1) + salt.size() + iv.size());
+    auto cipherPosition = static_cast<std::streamoff>(encodedHeader.size() + salt.size() + iv.size());
     ifs.clear();
     ifs.seekg(cipherPosition, std::ios::beg);
-    DecryptFileAes256GcmCore(ifs, cipherSize, outputPath, key, iv, tag, {}, chunkSize);
+    Bytes authenticatedMetadata = std::move(encodedHeader);
+    authenticatedMetadata.insert(authenticatedMetadata.end(), salt.begin(), salt.end());
+    authenticatedMetadata.insert(authenticatedMetadata.end(), iv.begin(), iv.end());
+    DecryptFileAes256GcmCore(ifs, cipherSize, outputPath, key, iv, tag, authenticatedMetadata, chunkSize,
+                             header.plainSize);
 }
 
 } // namespace ytpp::sys_core::encryption

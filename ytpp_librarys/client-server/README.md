@@ -5,7 +5,7 @@
 ## 引入方式
 
 ```cmake
-find_package(ytpp_cpp_lib CONFIG REQUIRED)
+find_package(ytpp_cpp_lib CONFIG REQUIRED COMPONENTS client_server)
 target_link_libraries(my_app PRIVATE ytpp::client_server)
 ```
 
@@ -179,12 +179,14 @@ RpcAsyncResult asyncResult = future.get();
 
 ## 签名与防重放
 
-`RpcSecurity::MakeSignature()` 和 `VerifySignature()` 使用规范化请求文本与共享密钥生成或验证签名。服务端同时检查时间戳偏差和 Nonce 重复。
+`RpcSecurity::MakeSignature()` 和 `VerifySignature()` 使用 HMAC-SHA256 对请求的确定性二进制表示进行认证，函数名、全部参数内容、时间戳和 Nonce 都在认证范围内。服务端同时检查时间戳偏差和 Nonce 重复。
 
 - 不要把共享密钥写入日志或提交到源码。
 - 两端系统时间需要保持同步。
 - 签名提供完整性和共享密钥身份校验，但不加密消息内容。
 - 访问控制仍依赖 SDDL、Windows 身份和进程白名单。
+- 共享密钥不能为空；密码学操作失败或签名为空时验证失败，不会降级放行。
+- 签名比较采用常量时间比较，避免普通字符串比较泄漏匹配前缀。
 
 ## 底层序列化接口
 
@@ -192,7 +194,11 @@ RpcAsyncResult asyncResult = future.get();
 
 `ByteBufferReader` 保存输入缓冲区引用，输入容器必须比读取器活得更久。所有 `Read...()` 返回成功状态，失败后不应继续使用剩余内容。
 
-`WriteMessageToPipe()` / `ReadMessageFromPipe()` 处理长度前缀消息帧，传入的 `HANDLE` 必须是有效且已连接的命名管道。
+线协议版本为 2，帧包含 magic、协议版本和长度。单帧最大 16 MiB，单个集合最多 65536 项，动态值最大嵌套深度为 64；超出限制或存在尾随数据时会拒绝消息。版本 2 与旧版无 magic 帧不兼容，客户端和服务端必须同时升级。
+
+客户端不会自动重放已经开始发送的请求。传输失败只返回本地错误，避免非幂等处理器被执行两次；需要业务重试时，应由上层结合稳定业务请求 ID 和幂等策略决定。
+
+`WriteMessageToPipe()` / `ReadMessageFromPipe()` 处理包含协议魔数、协议版本和负载长度的消息帧，传入的 `HANDLE` 必须是有效且已连接的命名管道。
 
 ## 自定义结构体
 
@@ -216,4 +222,3 @@ RpcAsyncResult asyncResult = future.get();
 | 偶发超时 | 工作线程数、连接池上限、处理器耗时 |
 | `As...()` 抛异常 | 是否先检查 `RpcValue` 类型 |
 | 日志无输出 | `Open()` 结果、最低级别、日志器生命周期 |
-

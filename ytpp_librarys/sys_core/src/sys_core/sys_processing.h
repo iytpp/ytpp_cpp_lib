@@ -20,8 +20,6 @@ class SingleInstanceGuard {
     /// @brief 创建单实例守卫并尝试取得命名互斥体。
     /// @param[in] applicationName 用于构造互斥体名称的应用名称。
     /// @param[in] mutexNamespace Windows对象命名空间。
-    /// @param applicationName 传递给 SingleInstanceGuard 的 applicationName 参数。
-    /// @param mutexNamespace 传递给 SingleInstanceGuard 的 mutexNamespace 参数。
     explicit SingleInstanceGuard(_In_ const std::wstring& applicationName,
                                  _In_ MutexNamespace mutexNamespace = MutexNamespace::Local);
 
@@ -30,13 +28,11 @@ class SingleInstanceGuard {
 
     /// @brief 禁止复制守卫对象。
     /// @param[in] other 不允许复制的源对象。
-    /// @param other 传递给 SingleInstanceGuard 的 other 参数。
     SingleInstanceGuard(_In_ const SingleInstanceGuard& other) = delete;
 
     /// @brief 禁止复制赋值。
     /// @param[in] other 不允许复制的源对象。
     /// @return 当前对象引用；该函数已删除，不能调用。
-    /// @param other 传递给 operator= 的 other 参数。
     SingleInstanceGuard& operator=(_In_ const SingleInstanceGuard& other) = delete;
 
     /// @brief 判断当前进程是否创建了该名称的首个实例。
@@ -56,8 +52,6 @@ class SingleInstanceGuard {
     /// @param[in] name 基础名称。
     /// @param[in] mutexNamespace Windows对象命名空间。
     /// @return 完整互斥体名称。
-    /// @param name 传递给 BuildMutexName 的 name 参数。
-    /// @param mutexNamespace 传递给 BuildMutexName 的 mutexNamespace 参数。
     static std::wstring BuildMutexName(_In_ const std::wstring& name, _In_ MutexNamespace mutexNamespace);
 
     HANDLE mutex_ = nullptr;
@@ -69,24 +63,18 @@ class SingleInstanceGuard {
 /// @param[in] x 水平屏幕坐标。
 /// @param[in] y 垂直屏幕坐标。
 /// @return Windows `SetCursorPos`的结果。
-/// @param x 横坐标；空值表示保持不变。
-/// @param y 纵坐标；空值表示保持不变。
 BOOL SetCursorPosition(_In_ int x, _In_ int y);
 
 /// @brief 仅更新给出的光标坐标分量。
 /// @param[in] x 可选水平坐标；空值表示保留当前位置。
 /// @param[in] y 可选垂直坐标；空值表示保留当前位置。
 /// @return 成功读取并设置光标位置时返回TRUE。
-/// @param x 横坐标；空值表示保持不变。
-/// @param y 纵坐标；空值表示保持不变。
 BOOL UpdateCursorPosition(_In_ std::optional<int> x, _In_ std::optional<int> y);
 
 /// @brief 获取当前鼠标光标位置。
 /// @param[out] x 接收水平屏幕坐标。
 /// @param[out] y 接收垂直屏幕坐标。
 /// @return 获取成功时返回TRUE。
-/// @param x 横坐标；空值表示保持不变。
-/// @param y 纵坐标；空值表示保持不变。
 BOOL GetCursorPosition(_Out_ LONG* x, _Out_ LONG* y);
 
 /// @brief 获取当前鼠标光标的垂直坐标。

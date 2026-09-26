@@ -5,7 +5,7 @@
 ## 引入方式
 
 ```cmake
-find_package(ytpp_cpp_lib CONFIG REQUIRED)
+find_package(ytpp_cpp_lib CONFIG REQUIRED COMPONENTS sys_core)
 target_link_libraries(my_app PRIVATE ytpp::sys_core)
 ```
 
@@ -254,7 +254,11 @@ FileCrypto::DecryptFileFromContainerWithPasswordAes256GcmPbkdf2(
     "input.dat.ytpp", "restored.dat", password);
 ```
 
-`chunkSize` 控制流式缓冲区，默认 1 MiB。解密认证失败会抛出异常；调用方不应把未经认证的临时输出当作有效文件。异常可通过 `OpenSslException` 或 `std::exception` 捕获，`GetOpenSslErrors()` 可用于诊断，但错误日志中不要包含密钥、口令或明文。
+当前容器格式为版本 2：头部使用固定小端字段编码，头部、盐和 IV 都作为 GCM AAD 接受认证，并限制 KDF 迭代次数及元数据长度。版本 2 不兼容旧的原始结构体版本 1 文件，需要先使用旧版本库解密再重新加密。
+
+所有 GCM 文件解密先写入同目录临时文件，只有认证标签和明文长度验证成功后才替换正式输出。认证失败不会覆盖已有目标文件，临时文件会自动清理。
+
+`chunkSize` 控制流式缓冲区，默认 1 MiB，必须大于零。解密认证失败会抛出异常且不会发布临时输出。异常可通过 `OpenSslException` 或 `std::exception` 捕获，`GetOpenSslErrors()` 可用于诊断，但错误日志中不要包含密钥、口令或明文。
 
 ## 设备信息 `machine_feature`
 
@@ -325,4 +329,3 @@ YTPP_LOG_ERROR("failed: " << errorMessage);
 - OpenSSL 模块主要通过异常报告失败。
 - 网络时间依赖外部网络和证书状态，应设置上层降级策略，不能假设始终可用。
 - A/W 接口中优先使用 W 或明确 UTF-8 的版本，避免当前 ANSI 代码页造成不可逆损失。
-

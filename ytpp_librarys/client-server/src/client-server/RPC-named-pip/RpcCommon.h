@@ -10,6 +10,17 @@
 
 namespace ytpp::client_server {
 
+/// @brief 单条RPC消息允许的最大字节数。
+inline constexpr std::uint32_t kRpcMaximumMessageSize = 16U * 1024U * 1024U;
+/// @brief 单个RPC数组、对象或顶层参数列表允许的最大元素数。
+inline constexpr std::uint32_t kRpcMaximumCollectionItems = 65536U;
+/// @brief RPC动态值允许的最大嵌套深度。
+inline constexpr std::uint32_t kRpcMaximumNestingDepth = 64U;
+/// @brief RPC帧头标识，以便尽早拒绝非本协议数据。
+inline constexpr std::uint32_t kRpcProtocolMagic = 0x50505459U;
+/// @brief 当前RPC线协议版本；不同版本必须显式协商或同时升级。
+inline constexpr std::uint32_t kRpcProtocolVersion = 2U;
+
 /// @brief RPC动态值的数据类型。
 enum class RpcValueType : std::uint8_t {
     Null,
@@ -255,7 +266,17 @@ class ByteBufferReader {
     /// @param value 要读取、写入或处理的值。
     bool ReadRpcValue(_Out_ RpcValue& value);
 
+    /// @brief 判断输入缓冲区是否已被完整消费。
+    /// @return 没有尾随字节时返回true。
+    [[nodiscard]] bool IsAtEnd() const noexcept;
+
   private:
+    /// @brief 读取一个动态值并限制递归深度。
+    /// @param[out] value 接收解析后的动态值。
+    /// @param[in] depth 当前递归深度，顶层为0。
+    /// @return 数据合法且完整时返回true。
+    bool ReadRpcValueImpl(_Out_ RpcValue& value, _In_ std::uint32_t depth);
+
     const std::vector<std::uint8_t>& buffer_;
     std::size_t offset_ = 0;
 };
@@ -274,18 +295,19 @@ std::vector<std::uint8_t> SerializeResult(_In_ const RpcResult& result);
 /// @param data 输入数据。
 /// @param result 接收操作结果。
 bool DeserializeResult(_In_ const std::vector<std::uint8_t>& data, _Out_ RpcResult& result);
-/// @brief 构造请求签名使用的规范化文本。@param[in] request 请求对象。@return 规范化文本。
-/// @param request 请求对象。
+/// @brief 构造请求签名使用的确定性二进制负载，不包含request.signature字段。
+/// @param[in] request 要认证的请求对象。
+/// @return 以std::string承载的二进制负载，内容可能包含空字节。
 std::string BuildCanonicalRequestText(_In_ const RpcRequest& request);
-/// @brief 向命名管道写入一条带长度前缀的消息。@param[in] pipe 管道句柄。@param[in] data 消息数据。@return
-/// 成功返回true。
-/// @param pipe 传递给 WriteMessageToPipe 的 pipe 参数。
-/// @param data 输入数据。
+/// @brief 向命名管道写入一条包含magic、版本和长度字段的完整协议帧。
+/// @param[in] pipe 已连接的同步命名管道句柄。
+/// @param[in] data 消息负载，大小不得超过kRpcMaximumMessageSize。
+/// @return 完整帧写入并刷新成功时返回true。
 bool WriteMessageToPipe(_In_ HANDLE pipe, _In_ const std::vector<std::uint8_t>& data);
-/// @brief 从命名管道读取一条带长度前缀的消息。@param[in] pipe 管道句柄。@param[out] data 接收消息。@return
-/// 成功返回true。
-/// @param pipe 传递给 ReadMessageFromPipe 的 pipe 参数。
-/// @param data 输入数据。
+/// @brief 从命名管道读取并校验一条包含magic、版本和长度字段的协议帧。
+/// @param[in] pipe 已连接的同步命名管道句柄。
+/// @param[out] data 接收通过帧头和大小校验的消息负载。
+/// @return 完整帧读取成功时返回true；版本不匹配、超限或I/O失败时返回false。
 bool ReadMessageFromPipe(_In_ HANDLE pipe, _Out_ std::vector<std::uint8_t>& data);
 /// @brief 将UTF-8转换为UTF-16。@param[in] text UTF-8文本。@return UTF-16文本。
 /// @param text 待处理文本。

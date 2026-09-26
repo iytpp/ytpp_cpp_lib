@@ -8,6 +8,8 @@ endif()
 
 project(ytpp_cpp_lib VERSION 0.1.0 LANGUAGES CXX)
 
+include(CTest)
+
 if(NOT WIN32)
     message(FATAL_ERROR "ytpp_cpp_lib currently supports Windows only.")
 endif()
@@ -21,7 +23,7 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 option(YTPP_BUILD_EXAMPLES "Build ytpp_cpp_lib examples" OFF)
-option(YTPP_BUILD_TEST_APP "Build the launch_for_test application" ON)
+option(YTPP_BUILD_TEST_APP "Build the automated test application" ON)
 
 find_package(CURL REQUIRED)
 find_package(jsoncpp CONFIG REQUIRED)
@@ -77,3 +79,13 @@ install(
         "${CMAKE_CURRENT_BINARY_DIR}/ytpp_cpp_lib-config-version.cmake"
     DESTINATION "${YTPP_CMAKE_INSTALL_DIR}"
 )
+
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/README.md" DESTINATION "${CMAKE_INSTALL_DOCDIR}")
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/ytpp_librarys/client-server/README.md"
+        DESTINATION "${CMAKE_INSTALL_DOCDIR}/modules/client-server")
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/ytpp_librarys/curl_ex/README.md"
+        DESTINATION "${CMAKE_INSTALL_DOCDIR}/modules/curl_ex")
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/ytpp_librarys/jsoncpp_ex/README.md"
+        DESTINATION "${CMAKE_INSTALL_DOCDIR}/modules/jsoncpp_ex")
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/ytpp_librarys/sys_core/README.md"
+        DESTINATION "${CMAKE_INSTALL_DOCDIR}/modules/sys_core")

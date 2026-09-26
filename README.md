@@ -69,7 +69,7 @@ ytpp_cpp_lib/
 │  │  └─ src/sys_core/...
 │  └─ combined/CMakeLists.txt         # 合并静态库
 ├─ examples/                          # 可选示例，默认不构建
-├─ tests/                             # 测试/启动验证程序
+├─ tests/                             # 自动化回归测试
 └─ out/
    ├─ build/<preset>/                 # 配置与构建输出
    └─ install/<preset>/               # 安装后的可消费 SDK
@@ -112,7 +112,7 @@ $env:VCPKG_ROOT = "D:\path\to\vcpkg"
 | x64 | `x64-windows-static-md` |
 | x86 | `x86-windows-static-md` |
 
-首次配置时 vcpkg 会按 manifest 安装依赖。为了实现完全可复现的依赖版本，发布版本应在 `vcpkg.json` 中维护经过验证的 `builtin-baseline`，并记录所使用的 vcpkg 仓库版本。
+首次配置时 vcpkg 会按 manifest 安装依赖。`vcpkg.json` 通过 `builtin-baseline` 固定经过验证的 registry 版本；升级 baseline 时必须重新验证四种 preset、安装包和独立消费项目。
 
 ## 5. 配置、构建和安装
 
@@ -139,7 +139,7 @@ cmake --build --preset x64-release-install
 
 1. 配置生成 Ninja 构建系统，并解析 vcpkg 依赖。
 2. 编译项目默认目标，但不复制安装内容。
-3. 构建 `install` 目标，并把头文件、静态库和 CMake Package 写入安装目录。
+3. 构建 `install` 目标，并把头文件、静态库、CMake Package 和使用手册写入安装目录。
 
 只修改源码时通常重复第二条即可；修改 CMake、preset、依赖清单或切换工具链后应重新配置。
 
@@ -208,11 +208,13 @@ cmake -S . -B out/build `
 cmake_minimum_required(VERSION 3.25)
 project(example LANGUAGES CXX)
 
-find_package(ytpp_cpp_lib CONFIG REQUIRED)
+find_package(ytpp_cpp_lib CONFIG REQUIRED COMPONENTS sys_core jsoncpp_ex)
 
 add_executable(example main.cpp)
 target_link_libraries(example PRIVATE ytpp::sys_core ytpp::jsoncpp_ex)
 ```
+
+未指定 `COMPONENTS` 时会加载完整依赖集合。按需指定 `client_server`、`curl_ex`、`jsoncpp_ex`、`sys_core` 或 `all`，可以避免仅使用轻量子库时仍要求安装无关第三方依赖。
 
 使用整套库：
 
@@ -227,7 +229,7 @@ target_link_libraries(example PRIVATE ytpp::all)
 - MSVC 的 UTF-8、严格一致性和 `__cplusplus` 选项。
 - 所需第三方包与 Windows 系统库链接依赖。
 
-消费项目仍需能够找到 CURL、JsonCpp 和 OpenSSL。推荐使用与本库一致的 vcpkg toolchain、架构和运行库配置。
+消费项目需要能够找到所选组件的传递依赖：`curl_ex` 需要 CURL，`jsoncpp_ex` 需要 JsonCpp，`sys_core` 需要 OpenSSL，`all` 需要全部依赖；`client_server` 只依赖 Windows 系统库。推荐使用与本库一致的 vcpkg toolchain、架构和运行库配置。
 
 ### 6.2 头文件示例
 
@@ -475,6 +477,16 @@ add_library(ytpp_all STATIC
 
 ## 13. 测试与发布检查清单
 
+配置并构建后运行：
+
+```powershell
+ctest --test-dir out/build/x64-release --output-on-failure
+```
+
+`ytpp_core_tests` 当前覆盖 RPC 签名完整性、协议边界、空文件覆盖写入，以及认证失败时不得发布明文等高风险回归场景。新增缺陷修复时应同步补充最小回归用例。
+
+`tests/package_consumer` 是安装包消费验证项目，只使用安装后的头文件、库和 CMake Package，用于发现构建树正常但安装导出损坏的问题。
+
 ### 代码提交前
 
 - [ ] 新接口符合命名、SAL 和注释规范。
@@ -525,4 +537,3 @@ add_library(ytpp_all STATIC
 ## 15. 维护责任
 
 当前项目由樱桃屁屁负责主要开发与维护。后续贡献应遵守本文的目录、接口、CMake、文档和验证约定，避免只让源码“能够编译”而破坏安装包、消费方或其他架构配置。
-

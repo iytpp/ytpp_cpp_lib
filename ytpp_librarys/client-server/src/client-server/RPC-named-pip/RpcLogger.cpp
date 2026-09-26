@@ -10,6 +10,9 @@ RpcLogger::~RpcLogger() {
 
 bool RpcLogger::Open(_In_ const std::wstring& filePath, _In_ LogLevel minLevel) {
     std::lock_guard<std::mutex> lock(mutex_);
+    if (file_.is_open())
+        file_.close();
+    file_.clear();
     minLevel_ = minLevel;
     file_.open(filePath, std::ios::app);
     return file_.is_open();
@@ -38,10 +41,9 @@ void RpcLogger::Error(_In_ const std::wstring& msg) {
 }
 
 void RpcLogger::Write(_In_ LogLevel level, _In_ const std::wstring& msg) {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (level < minLevel_)
         return;
-
-    std::lock_guard<std::mutex> lock(mutex_);
     if (!file_.is_open())
         return;
 

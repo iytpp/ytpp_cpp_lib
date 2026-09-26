@@ -324,8 +324,13 @@ static std::string ReadHttpDateHeader(_In_ HINTERNET requestHandle) {
         throw std::runtime_error("WinHttpQueryHeaders(Date) failed.");
     }
 
-    std::wstring ws(buffer);
-    return std::string(ws.begin(), ws.end());
+    std::string dateHeader;
+    for (const wchar_t character : std::wstring_view(buffer)) {
+        if (character > 0x7F)
+            throw std::runtime_error("WinHTTP returned a non-ASCII Date header.");
+        dateHeader.push_back(static_cast<char>(character));
+    }
+    return dateHeader;
 }
 
 static DateTime ParseHttpDateToUtc(_In_ const std::string& dateHeader) {

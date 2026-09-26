@@ -143,138 +143,99 @@ bool FileExists(_In_ const std::wstring& fileName) {
 }
 
 bool WriteDataToFile(_In_ const std::string& fileName, _In_ const std::vector<char>& data) {
-    // 先判断data是否为空，如果为空，则返回true
-    if (data.empty() || data.size() == 0) {
-        return true;
-    }
-    // data不为空，则写入文件
-    std::ofstream out(fileName, std::ios::binary);
+    std::ofstream out(fileName, std::ios::binary | std::ios::trunc);
     if (!out.is_open()) {
         return false;
     }
-    out.write(&data[0], data.size());
+    if (!data.empty())
+        out.write(data.data(), static_cast<std::streamsize>(data.size()));
     out.close();
-    return true;
+    return !out.fail();
 }
 
 bool WriteDataToFile(_In_ const std::wstring& fileName, _In_ const std::vector<char>& data) {
-    // 先判断data是否为空，如果为空，则返回true
-    if (data.empty() || data.size() == 0) {
-        return true;
-    }
-    // data不为空，则写入文件
-    std::ofstream out(fileName, std::ios::binary);
+    std::ofstream out(fileName, std::ios::binary | std::ios::trunc);
     if (!out.is_open()) {
         return false;
     }
-    out.write(&data[0], data.size());
+    if (!data.empty())
+        out.write(data.data(), static_cast<std::streamsize>(data.size()));
     out.close();
-    return true;
+    return !out.fail();
 }
 
-bool WriteDataToFile(_In_ const std::string& fileName, _In_reads_bytes_(size) const char* data, _In_ std::size_t size) {
-    // 先判断data是否为空，如果为空，则返回true
-    if (data == NULL || size == NULL) {
-        return true;
-    }
-    std::ofstream out(fileName, std::ios::binary);
-    if (!out.is_open()) {
-        return false;
-    }
-    out.write(data, size);
-    out.close();
-    return true;
-}
-
-bool WriteDataToFile(_In_ const std::wstring& fileName, _In_reads_bytes_(size) const char* data,
+bool WriteDataToFile(_In_ const std::string& fileName, _In_reads_bytes_opt_(size) const char* data,
                      _In_ std::size_t size) {
-    // 先判断data是否为空，如果为空，则返回true
-    if (data == NULL || size == NULL) {
-        return true;
-    }
-    std::ofstream out(fileName, std::ios::binary);
+    if (data == nullptr && size != 0)
+        return false;
+    std::ofstream out(fileName, std::ios::binary | std::ios::trunc);
     if (!out.is_open()) {
         return false;
     }
-    out.write(data, size);
+    if (size != 0)
+        out.write(data, static_cast<std::streamsize>(size));
     out.close();
-    return true;
+    return !out.fail();
+}
+
+bool WriteDataToFile(_In_ const std::wstring& fileName, _In_reads_bytes_opt_(size) const char* data,
+                     _In_ std::size_t size) {
+    if (data == nullptr && size != 0)
+        return false;
+    std::ofstream out(fileName, std::ios::binary | std::ios::trunc);
+    if (!out.is_open()) {
+        return false;
+    }
+    if (size != 0)
+        out.write(data, static_cast<std::streamsize>(size));
+    out.close();
+    return !out.fail();
 }
 
 bool WriteDataToFile(_In_ const std::string& fileName, _In_ const std::string& data) {
-    // 先判断data是否为空，如果为空，则返回true
-    if (data.empty() || data.size() == 0) {
-        return true;
-    }
-    // data不为空，则写入文件
-    std::ofstream out(fileName, std::ios::out);
+    std::ofstream out(fileName, std::ios::binary | std::ios::trunc);
     if (!out.is_open()) {
         return false;
     }
-    out.write(&data[0], data.size());
+    if (!data.empty())
+        out.write(data.data(), static_cast<std::streamsize>(data.size()));
     out.close();
-    return true;
+    return !out.fail();
 }
 
 bool WriteDataToFile(_In_ const std::wstring& fileName, _In_ const std::string& data) {
-    // 先判断data是否为空，如果为空，则返回true
-    if (data.empty() || data.size() == 0) {
-        return true;
-    }
-    // data不为空，则写入文件
-    std::ofstream out(fileName, std::ios::out);
+    std::ofstream out(fileName, std::ios::binary | std::ios::trunc);
     if (!out.is_open()) {
         return false;
     }
-    out.write(&data[0], data.size());
+    if (!data.empty())
+        out.write(data.data(), static_cast<std::streamsize>(data.size()));
     out.close();
-    return true;
+    return !out.fail();
 }
 
 bool WriteDataToFile(_In_ const std::string& fileName, _In_ const std::wstring& data) {
-    // 先判断data是否为空，如果为空，则返回true
-    if (data.empty() || data.size() == 0) {
-        return true;
-    }
-    // data不为空，则写入文件
-    std::ofstream out(fileName, std::ios::out);
+    std::ofstream out(fileName, std::ios::binary | std::ios::trunc);
     if (!out.is_open()) {
         return false;
     }
-    char* buffer = nullptr;
-    std::size_t bufferSize = data.size() * sizeof(wchar_t);
-    buffer = new char[bufferSize];
-    // ZeroMemory( buffer, bufferSize );
-    std::memcpy(buffer, &data[0], bufferSize);
-
-    out.write(buffer, bufferSize);
+    const std::size_t bufferSize = data.size() * sizeof(wchar_t);
+    if (bufferSize != 0)
+        out.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(bufferSize));
     out.close();
-
-    delete[] buffer;
-    return true;
+    return !out.fail();
 }
 
 bool WriteDataToFile(_In_ const std::wstring& fileName, _In_ const std::wstring& data) {
-    // 先判断data是否为空，如果为空，则返回true
-    if (data.empty() || data.size() == 0) {
-        return true;
-    }
-    // data不为空，则写入文件
-    std::ofstream out(fileName, std::ios::out);
+    std::ofstream out(fileName, std::ios::binary | std::ios::trunc);
     if (!out.is_open()) {
         return false;
     }
-    char* buffer = nullptr;
-    std::size_t bufferSize = data.size() * sizeof(wchar_t);
-    buffer = new char[bufferSize];
-    // ZeroMemory( buffer, bufferSize );
-    std::memcpy(buffer, &data[0], bufferSize);
-
-    out.write(buffer, bufferSize);
+    const std::size_t bufferSize = data.size() * sizeof(wchar_t);
+    if (bufferSize != 0)
+        out.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(bufferSize));
     out.close();
-
-    delete[] buffer;
-    return true;
+    return !out.fail();
 }
 
 bool WriteResourceToFileA(_In_ HMODULE hModule, _In_ LPCSTR resName, _In_ LPCSTR resType,
@@ -343,7 +304,7 @@ bool WriteProfileValueW(_In_ const std::wstring& fileName, _In_ const std::wstri
 
 std::string ReadProfileValueA(_In_ const std::string& fileName, _In_ const std::string& section,
                               _In_ const std::string& key, _In_ const std::string& defaultValue,
-                              _Inout_ DWORD defaultBufferSize /* = 256 */) {
+                              _In_ DWORD defaultBufferSize /* = 256 */) {
     std::string rtn;
     DWORD currentBufferSize = defaultBufferSize;
     char* buffer = new char[currentBufferSize];
@@ -366,7 +327,7 @@ std::string ReadProfileValueA(_In_ const std::string& fileName, _In_ const std::
 
 std::wstring ReadProfileValueW(_In_ const std::wstring& fileName, _In_ const std::wstring& section,
                                _In_ const std::wstring& key, _In_ const std::wstring& defaultValue,
-                               _Inout_ DWORD defaultBufferSize /* = 256 */) {
+                               _In_ DWORD defaultBufferSize /* = 256 */) {
     std::wstring rtn;
     DWORD currentBufferSize = defaultBufferSize;
     wchar_t* buffer = new wchar_t[currentBufferSize];
@@ -388,13 +349,14 @@ std::wstring ReadProfileValueW(_In_ const std::wstring& fileName, _In_ const std
 }
 
 bool WriteProfileStructA(_In_ const std::string& fileName, _In_ const std::string& section, _In_ const std::string& key,
-                         _In_ const void* structure, _In_ UINT structureSize) {
+                         _In_reads_bytes_(structureSize) const void* structure, _In_ UINT structureSize) {
     return ::WritePrivateProfileStructA(section.c_str(), key.c_str(), const_cast<void*>(structure), structureSize,
                                         fileName.c_str());
 }
 
 bool WriteProfileStructW(_In_ const std::wstring& fileName, _In_ const std::wstring& section,
-                         _In_ const std::wstring& key, _In_ const void* structure, _In_ UINT structureSize) {
+                         _In_ const std::wstring& key, _In_reads_bytes_(structureSize) const void* structure,
+                         _In_ UINT structureSize) {
     return ::WritePrivateProfileStructW(section.c_str(), key.c_str(), const_cast<void*>(structure), structureSize,
                                         fileName.c_str());
 }

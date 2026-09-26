@@ -302,10 +302,7 @@ class HttpHeaders {
     } ///< 获取结束只读迭代器。
 
   private:
-    /// @param str 传递给 Trim 的 str 参数。
     static std::string Trim(_In_ std::string_view str); ///< 去除首尾空白。
-    /// @param a 传递给 EqualsIgnoreCase 的 a 参数。
-    /// @param b 传递给 EqualsIgnoreCase 的 b 参数。
     static bool EqualsIgnoreCase(_In_ std::string_view a, _In_ std::string_view b) noexcept; ///< 大小写不敏感比较。
     /// @param value 要读取、写入或处理的值。
     static bool IsSafeHeaderName(_In_ std::string_view value) noexcept; ///< 验证 Header 名称安全性。
@@ -437,10 +434,7 @@ class HttpCookies {
     }
 
   private:
-    /// @param str 传递给 Trim 的 str 参数。
     static std::string Trim(_In_ std::string_view str); ///< 去除首尾空白。
-    /// @param a 传递给 HasSameIdentity 的 a 参数。
-    /// @param b 传递给 HasSameIdentity 的 b 参数。
     static bool HasSameIdentity(_In_ const Cookie& a, _In_ const Cookie& b); ///< 比较 Name/Domain/Path 身份。
     std::vector<Cookie> cookies_;                                            ///< Cookie 列表。
 };
@@ -1294,9 +1288,7 @@ class HttpClient {
     ~HttpClient();                                     ///< 释放客户端。
     HttpClient(const HttpClient&) = delete;            ///< 禁止复制。
     HttpClient& operator=(const HttpClient&) = delete; ///< 禁止复制赋值。
-    /// @param other 传递给 HttpClient 的 other 参数。
     HttpClient(_Inout_ HttpClient&& other) noexcept; ///< 支持移动构造。
-    /// @param other 传递给 operator= 的 other 参数。
     HttpClient& operator=(_Inout_ HttpClient&& other) noexcept; ///< 支持移动赋值。
 
     /// 获取可写默认请求配置；仅建议在没有并发请求时直接修改该引用。
@@ -1392,53 +1384,41 @@ class HttpClient {
 
     /// @param method HTTP 方法或操作名称。
     /// @param url 请求地址。
-    /// @param json 传递给 RequestJson 的 json 参数。
     HttpResponse RequestJson(_In_ std::string_view method, _In_ std::string_view url,
                              _In_ std::string_view json); ///< 使用默认配置发送任意 Method JSON。
     /// @param method HTTP 方法或操作名称。
     /// @param url 请求地址。
-    /// @param json 传递给 RequestJson 的 json 参数。
     /// @param options 本次操作配置。
     HttpResponse RequestJson(_In_ std::string_view method, _In_ std::string_view url, _In_ std::string_view json,
                              _In_ RequestOptions options); ///< 使用指定配置发送任意 Method JSON。
     /// @param url 请求地址。
-    /// @param json 传递给 PostJson 的 json 参数。
     HttpResponse PostJson(_In_ std::string_view url, _In_ std::string_view json); ///< 使用默认配置发送 JSON POST。
     /// @param url 请求地址。
-    /// @param json 传递给 PostJson 的 json 参数。
     /// @param options 本次操作配置。
     HttpResponse PostJson(_In_ std::string_view url, _In_ std::string_view json,
                           _In_ RequestOptions options); ///< 使用指定配置发送 JSON POST。
     /// @param url 请求地址。
-    /// @param json 传递给 PutJson 的 json 参数。
     HttpResponse PutJson(_In_ std::string_view url, _In_ std::string_view json); ///< 使用默认配置发送 JSON PUT。
     /// @param url 请求地址。
-    /// @param json 传递给 PutJson 的 json 参数。
     /// @param options 本次操作配置。
     HttpResponse PutJson(_In_ std::string_view url, _In_ std::string_view json,
                          _In_ RequestOptions options); ///< 使用指定配置发送 JSON PUT。
     /// @param url 请求地址。
-    /// @param json 传递给 PatchJson 的 json 参数。
     HttpResponse PatchJson(_In_ std::string_view url, _In_ std::string_view json); ///< 使用默认配置发送 JSON PATCH。
     /// @param url 请求地址。
-    /// @param json 传递给 PatchJson 的 json 参数。
     /// @param options 本次操作配置。
     HttpResponse PatchJson(_In_ std::string_view url, _In_ std::string_view json,
                            _In_ RequestOptions options); ///< 使用指定配置发送 JSON PATCH。
     /// @param url 请求地址。
-    /// @param form 传递给 PostForm 的 form 参数。
     HttpResponse PostForm(_In_ std::string_view url, _In_ const UrlParameters& form); ///< 发送表单 POST。
     /// @param url 请求地址。
-    /// @param form 传递给 PostForm 的 form 参数。
     /// @param options 本次操作配置。
     HttpResponse PostForm(_In_ std::string_view url, _In_ const UrlParameters& form,
                           _In_ RequestOptions options); ///< 使用指定配置发送表单 POST。
     /// @param url 请求地址。
-    /// @param parts 传递给 UploadMultipart 的 parts 参数。
     HttpResponse UploadMultipart(_In_ std::string_view url,
                                  _In_ std::vector<MultipartPart> parts); ///< 上传 Multipart。
     /// @param url 请求地址。
-    /// @param parts 传递给 UploadMultipart 的 parts 参数。
     /// @param options 本次操作配置。
     HttpResponse UploadMultipart(_In_ std::string_view url, _In_ std::vector<MultipartPart> parts,
                                  _In_ RequestOptions options); ///< 使用指定配置上传 Multipart。
@@ -1558,30 +1538,24 @@ class AsyncHttpClient {
     std::future<HttpResponse> OptionsAsync(_In_ std::string_view url); ///< 使用默认配置异步 OPTIONS。
 
     /// @param url 请求地址。
-    /// @param json 传递给 PostJsonAsync 的 json 参数。
     /// @param options 本次操作配置。
     std::future<HttpResponse> PostJsonAsync(_In_ std::string_view url, _In_ std::string_view json,
                                             _In_ RequestOptions options); ///< 异步 JSON POST。
     /// @param url 请求地址。
-    /// @param json 传递给 PostJsonAsync 的 json 参数。
     std::future<HttpResponse> PostJsonAsync(_In_ std::string_view url,
                                             _In_ std::string_view json); ///< 使用默认配置异步 JSON POST。
     /// @param url 请求地址。
-    /// @param json 传递给 PutJsonAsync 的 json 参数。
     /// @param options 本次操作配置。
     std::future<HttpResponse> PutJsonAsync(_In_ std::string_view url, _In_ std::string_view json,
                                            _In_ RequestOptions options); ///< 异步 JSON PUT。
     /// @param url 请求地址。
-    /// @param json 传递给 PutJsonAsync 的 json 参数。
     std::future<HttpResponse> PutJsonAsync(_In_ std::string_view url,
                                            _In_ std::string_view json); ///< 使用默认配置异步 JSON PUT。
     /// @param url 请求地址。
-    /// @param json 传递给 PatchJsonAsync 的 json 参数。
     /// @param options 本次操作配置。
     std::future<HttpResponse> PatchJsonAsync(_In_ std::string_view url, _In_ std::string_view json,
                                              _In_ RequestOptions options); ///< 异步 JSON PATCH。
     /// @param url 请求地址。
-    /// @param json 传递给 PatchJsonAsync 的 json 参数。
     std::future<HttpResponse> PatchJsonAsync(_In_ std::string_view url,
                                              _In_ std::string_view json); ///< 使用默认配置异步 JSON PATCH。
 
@@ -1608,9 +1582,7 @@ class HttpAwaitable {
     ~HttpAwaitable(); ///< 注销仍处于挂起状态的恢复句柄；外部并发销毁 coroutine frame 仍需调用方自行同步。
     HttpAwaitable(const HttpAwaitable&) = delete;            ///< 禁止复制，避免多个 Awaitable 竞争同一恢复句柄。
     HttpAwaitable& operator=(const HttpAwaitable&) = delete; ///< 禁止复制赋值。
-    /// @param other 传递给 HttpAwaitable 的 other 参数。
     HttpAwaitable(_Inout_ HttpAwaitable&& other) noexcept; ///< 支持移动构造。
-    /// @param other 传递给 operator= 的 other 参数。
     HttpAwaitable& operator=(_Inout_ HttpAwaitable&& other) noexcept; ///< 支持移动赋值。
     bool await_ready() const;                                         ///< 判断结果是否已完成。
     /// @param handle 系统或库资源句柄。
@@ -1618,14 +1590,11 @@ class HttpAwaitable {
     HttpResponse await_resume();                             ///< 获取请求结果。
   private:
     struct State; ///< 协程共享状态。
-    /// @param state 传递给 HttpAwaitable 的 state 参数。
     explicit HttpAwaitable(_In_ std::shared_ptr<State> state); ///< 使用内部状态创建 Awaitable。
     std::shared_ptr<State> state_;                             ///< 协程共享状态。
     /// @brief 调用 GetAwaitable 完成对应操作。
-    /// @param string_view 传递给 GetAwaitable 的 string_view 参数。
     friend HttpAwaitable GetAwaitable(AsyncHttpClient&, _In_ std::string_view, _In_ RequestOptions);
     /// @brief 调用 PostAwaitable 完成对应操作。
-    /// @param string_view 传递给 PostAwaitable 的 string_view 参数。
     friend HttpAwaitable PostAwaitable(AsyncHttpClient&, _In_ std::string_view, _In_ std::string_view,
                                        _In_ RequestOptions);
 };

@@ -13,16 +13,12 @@ namespace ytpp::sys_core::disk_manipulation {
 /// @param[in] folderId `FOLDERID_*`已知文件夹标识。
 /// @param[in] trailingSlash 是否在结果末尾添加反斜杠。
 /// @return 文件夹路径；获取失败时返回空字符串。
-/// @param folderId 传递给 GetKnownFolderPathW 的 folderId 参数。
-/// @param trailingSlash 传递给 GetKnownFolderPathW 的 trailingSlash 参数。
 std::wstring GetKnownFolderPathW(_In_ REFKNOWNFOLDERID folderId, _In_ bool trailingSlash = true);
 
 /// @brief 获取Windows已知文件夹的UTF-8路径。
 /// @param[in] folderId `FOLDERID_*`已知文件夹标识。
 /// @param[in] trailingSlash 是否在结果末尾添加反斜杠。
 /// @return UTF-8文件夹路径；获取失败时返回空字符串。
-/// @param folderId 传递给 GetKnownFolderPathUtf8 的 folderId 参数。
-/// @param trailingSlash 传递给 GetKnownFolderPathUtf8 的 trailingSlash 参数。
 std::string GetKnownFolderPathUtf8(_In_ REFKNOWNFOLDERID folderId, _In_ bool trailingSlash = true);
 
 /// @brief 获取当前可执行文件的完整路径。
@@ -32,50 +28,41 @@ std::filesystem::path GetExePath();
 /// @brief 获取当前可执行文件所在目录的UTF-8路径。
 /// @param[in] withSlash 是否在结果末尾保留反斜杠。
 /// @return UTF-8目录路径。
-/// @param withSlash 传递给 deprecated 的 withSlash 参数。
 [[deprecated("Use GetExePath() instead")]]
 std::string GetExecutableDirectoryUtf8(_In_ bool withSlash = true);
 
 /// @brief 获取当前可执行文件所在目录的ANSI路径。
 /// @param[in] withSlash 是否在结果末尾保留反斜杠。
 /// @return 当前ANSI代码页目录路径。
-/// @param withSlash 传递给 deprecated 的 withSlash 参数。
 [[deprecated("Use GetExePath() instead")]]
 std::string GetExecutableDirectoryA(_In_ bool withSlash = true);
 
 /// @brief 获取当前可执行文件所在目录的UTF-16路径。
 /// @param[in] withSlash 是否在结果末尾保留反斜杠。
 /// @return UTF-16目录路径。
-/// @param withSlash 传递给 deprecated 的 withSlash 参数。
 [[deprecated("Use GetExePath() instead")]]
 std::wstring GetExecutableDirectoryW(_In_ bool withSlash = true);
 
 /// @brief 判断ANSI或UTF-8文件路径是否存在。
 /// @param[in] fileName 要检查的文件路径。
 /// @return 文件存在时返回true。
-/// @param fileName 文件或目录路径。
 bool FileExists(_In_ const std::string& fileName);
 
 /// @brief 判断UTF-16文件路径是否存在。
 /// @param[in] fileName 要检查的文件路径。
 /// @return 文件存在时返回true。
-/// @param fileName 文件或目录路径。
 bool FileExists(_In_ const std::wstring& fileName);
 
 /// @brief 将字节数组覆盖写入ANSI或UTF-8路径文件。
 /// @param[in] fileName 目标文件路径。
 /// @param[in] data 要写入的数据。
 /// @return 写入成功时返回true。
-/// @param fileName 文件或目录路径。
-/// @param data 输入数据。
 bool WriteDataToFile(_In_ const std::string& fileName, _In_ const std::vector<char>& data);
 
 /// @brief 将字节数组覆盖写入UTF-16路径文件。
 /// @param[in] fileName 目标文件路径。
 /// @param[in] data 要写入的数据。
 /// @return 写入成功时返回true。
-/// @param fileName 文件或目录路径。
-/// @param data 输入数据。
 bool WriteDataToFile(_In_ const std::wstring& fileName, _In_ const std::vector<char>& data);
 
 /// @brief 将原始字节覆盖写入ANSI或UTF-8路径文件。
@@ -83,8 +70,6 @@ bool WriteDataToFile(_In_ const std::wstring& fileName, _In_ const std::vector<c
 /// @param[in] data 数据缓冲区；size为0时可以为空。
 /// @param[in] size 写入字节数。
 /// @return 写入成功时返回true。
-/// @param fileName 文件或目录路径。
-/// @param size 数据大小。
 bool WriteDataToFile(_In_ const std::string& fileName, _In_reads_bytes_opt_(size) const char* data,
                      _In_ std::size_t size);
 
@@ -93,8 +78,6 @@ bool WriteDataToFile(_In_ const std::string& fileName, _In_reads_bytes_opt_(size
 /// @param[in] data 数据缓冲区；size为0时可以为空。
 /// @param[in] size 写入字节数。
 /// @return 写入成功时返回true。
-/// @param fileName 文件或目录路径。
-/// @param size 数据大小。
 bool WriteDataToFile(_In_ const std::wstring& fileName, _In_reads_bytes_opt_(size) const char* data,
                      _In_ std::size_t size);
 
@@ -102,32 +85,24 @@ bool WriteDataToFile(_In_ const std::wstring& fileName, _In_reads_bytes_opt_(siz
 /// @param[in] fileName 目标文件路径。
 /// @param[in] data 要写入的窄字符串字节。
 /// @return 写入成功时返回true。
-/// @param fileName 文件或目录路径。
-/// @param data 输入数据。
 bool WriteDataToFile(_In_ const std::string& fileName, _In_ const std::string& data);
 
 /// @brief 将窄字符串覆盖写入UTF-16路径文件。
 /// @param[in] fileName 目标文件路径。
 /// @param[in] data 要写入的窄字符串字节。
 /// @return 写入成功时返回true。
-/// @param fileName 文件或目录路径。
-/// @param data 输入数据。
 bool WriteDataToFile(_In_ const std::wstring& fileName, _In_ const std::string& data);
 
 /// @brief 将宽字符串覆盖写入ANSI或UTF-8路径文件。
 /// @param[in] fileName 目标文件路径。
 /// @param[in] data 要写入的UTF-16字符串。
 /// @return 写入成功时返回true。
-/// @param fileName 文件或目录路径。
-/// @param data 输入数据。
 bool WriteDataToFile(_In_ const std::string& fileName, _In_ const std::wstring& data);
 
 /// @brief 将宽字符串覆盖写入UTF-16路径文件。
 /// @param[in] fileName 目标文件路径。
 /// @param[in] data 要写入的UTF-16字符串。
 /// @return 写入成功时返回true。
-/// @param fileName 文件或目录路径。
-/// @param data 输入数据。
 bool WriteDataToFile(_In_ const std::wstring& fileName, _In_ const std::wstring& data);
 
 /// @brief 从模块提取窄字符名称资源并写入文件。
@@ -136,10 +111,6 @@ bool WriteDataToFile(_In_ const std::wstring& fileName, _In_ const std::wstring&
 /// @param[in] resourceType 资源类型。
 /// @param[in] outputPath 输出文件路径。
 /// @return 提取并写入成功时返回true。
-/// @param module 传递给 WriteResourceToFileA 的 module 参数。
-/// @param resourceName 传递给 WriteResourceToFileA 的 resourceName 参数。
-/// @param resourceType 传递给 WriteResourceToFileA 的 resourceType 参数。
-/// @param outputPath 文件或目录路径。
 bool WriteResourceToFileA(_In_ HMODULE module, _In_ LPCSTR resourceName, _In_ LPCSTR resourceType,
                           _In_ const std::string& outputPath);
 
@@ -149,10 +120,6 @@ bool WriteResourceToFileA(_In_ HMODULE module, _In_ LPCSTR resourceName, _In_ LP
 /// @param[in] resourceType 资源类型。
 /// @param[in] outputPath 输出文件路径。
 /// @return 提取并写入成功时返回true。
-/// @param module 传递给 WriteResourceToFileW 的 module 参数。
-/// @param resourceName 传递给 WriteResourceToFileW 的 resourceName 参数。
-/// @param resourceType 传递给 WriteResourceToFileW 的 resourceType 参数。
-/// @param outputPath 文件或目录路径。
 bool WriteResourceToFileW(_In_ HMODULE module, _In_ LPCWSTR resourceName, _In_ LPCWSTR resourceType,
                           _In_ const std::wstring& outputPath);
 
@@ -162,10 +129,6 @@ bool WriteResourceToFileW(_In_ HMODULE module, _In_ LPCWSTR resourceName, _In_ L
 /// @param[in] key 配置项名称。
 /// @param[in] value 配置项值。
 /// @return 写入成功时返回true。
-/// @param fileName 文件或目录路径。
-/// @param section 传递给 WriteProfileValueA 的 section 参数。
-/// @param key 键、名称或密钥。
-/// @param value 要读取、写入或处理的值。
 bool WriteProfileValueA(_In_ const std::string& fileName, _In_ const std::string& section, _In_ const std::string& key,
                         _In_ const std::string& value);
 
@@ -175,10 +138,6 @@ bool WriteProfileValueA(_In_ const std::string& fileName, _In_ const std::string
 /// @param[in] key 配置项名称。
 /// @param[in] value 配置项值。
 /// @return 写入成功时返回true。
-/// @param fileName 文件或目录路径。
-/// @param section 传递给 WriteProfileValueW 的 section 参数。
-/// @param key 键、名称或密钥。
-/// @param value 要读取、写入或处理的值。
 bool WriteProfileValueW(_In_ const std::wstring& fileName, _In_ const std::wstring& section,
                         _In_ const std::wstring& key, _In_ const std::wstring& value);
 
@@ -189,11 +148,6 @@ bool WriteProfileValueW(_In_ const std::wstring& fileName, _In_ const std::wstri
 /// @param[in] defaultValue 配置项不存在时使用的默认值。
 /// @param[in] initialBufferSize 初始读取缓冲区大小。
 /// @return 配置项值。
-/// @param fileName 文件或目录路径。
-/// @param section 传递给 ReadProfileValueA 的 section 参数。
-/// @param key 键、名称或密钥。
-/// @param defaultValue 传递给 ReadProfileValueA 的 defaultValue 参数。
-/// @param initialBufferSize 对应的数量或限制值。
 std::string ReadProfileValueA(_In_ const std::string& fileName, _In_ const std::string& section,
                               _In_ const std::string& key, _In_ const std::string& defaultValue,
                               _In_ DWORD initialBufferSize = 256);
@@ -205,11 +159,6 @@ std::string ReadProfileValueA(_In_ const std::string& fileName, _In_ const std::
 /// @param[in] defaultValue 配置项不存在时使用的默认值。
 /// @param[in] initialBufferSize 初始读取缓冲区大小。
 /// @return 配置项值。
-/// @param fileName 文件或目录路径。
-/// @param section 传递给 ReadProfileValueW 的 section 参数。
-/// @param key 键、名称或密钥。
-/// @param defaultValue 传递给 ReadProfileValueW 的 defaultValue 参数。
-/// @param initialBufferSize 对应的数量或限制值。
 std::wstring ReadProfileValueW(_In_ const std::wstring& fileName, _In_ const std::wstring& section,
                                _In_ const std::wstring& key, _In_ const std::wstring& defaultValue,
                                _In_ DWORD initialBufferSize = 256);
@@ -221,10 +170,6 @@ std::wstring ReadProfileValueW(_In_ const std::wstring& fileName, _In_ const std
 /// @param[in] structure 结构体数据地址。
 /// @param[in] structureSize 结构体字节数。
 /// @return 写入成功时返回true。
-/// @param fileName 文件或目录路径。
-/// @param section 传递给 WriteProfileStructA 的 section 参数。
-/// @param key 键、名称或密钥。
-/// @param structureSize 对应的数量或限制值。
 bool WriteProfileStructA(_In_ const std::string& fileName, _In_ const std::string& section, _In_ const std::string& key,
                          _In_reads_bytes_(structureSize) const void* structure, _In_ UINT structureSize);
 
@@ -235,10 +180,6 @@ bool WriteProfileStructA(_In_ const std::string& fileName, _In_ const std::strin
 /// @param[in] structure 结构体数据地址。
 /// @param[in] structureSize 结构体字节数。
 /// @return 写入成功时返回true。
-/// @param fileName 文件或目录路径。
-/// @param section 传递给 WriteProfileStructW 的 section 参数。
-/// @param key 键、名称或密钥。
-/// @param structureSize 对应的数量或限制值。
 bool WriteProfileStructW(_In_ const std::wstring& fileName, _In_ const std::wstring& section,
                          _In_ const std::wstring& key, _In_reads_bytes_(structureSize) const void* structure,
                          _In_ UINT structureSize);
@@ -250,10 +191,6 @@ bool WriteProfileStructW(_In_ const std::wstring& fileName, _In_ const std::wstr
 /// @param[out] structure 接收结构体数据的缓冲区。
 /// @param[in] structureSize 缓冲区字节数。
 /// @return 读取成功时返回true。
-/// @param fileName 文件或目录路径。
-/// @param section 传递给 ReadProfileStructA 的 section 参数。
-/// @param key 键、名称或密钥。
-/// @param structureSize 对应的数量或限制值。
 bool ReadProfileStructA(_In_ const std::string& fileName, _In_ const std::string& section, _In_ const std::string& key,
                         _Out_writes_bytes_(structureSize) void* structure, _In_ UINT structureSize);
 
@@ -264,10 +201,6 @@ bool ReadProfileStructA(_In_ const std::string& fileName, _In_ const std::string
 /// @param[out] structure 接收结构体数据的缓冲区。
 /// @param[in] structureSize 缓冲区字节数。
 /// @return 读取成功时返回true。
-/// @param fileName 文件或目录路径。
-/// @param section 传递给 ReadProfileStructW 的 section 参数。
-/// @param key 键、名称或密钥。
-/// @param structureSize 对应的数量或限制值。
 bool ReadProfileStructW(_In_ const std::wstring& fileName, _In_ const std::wstring& section,
                         _In_ const std::wstring& key, _Out_writes_bytes_(structureSize) void* structure,
                         _In_ UINT structureSize);

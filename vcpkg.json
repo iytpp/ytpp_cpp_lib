@@ -2,6 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
   "name": "ytpp-cpp-lib",
   "version-string": "0.1.0",
+  "builtin-baseline": "98d7cb0cf1f4686a3e43aa5672b6230c1d56bce8",
   "dependencies": [
     "curl",
     "jsoncpp",

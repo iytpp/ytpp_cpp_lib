@@ -31,9 +31,6 @@ class NamedPipeRpcServer {
     /// @param[in] pipeName 完整命名管道名称。
     /// @param[in] sharedSecret 请求签名共享密钥。
     /// @param[in] workerCount 工作线程数量；0表示自动选择。
-    /// @param pipeName 传递给 NamedPipeRpcServer 的 pipeName 参数。
-    /// @param sharedSecret 传递给 NamedPipeRpcServer 的 sharedSecret 参数。
-    /// @param workerCount 对应的数量或限制值。
     NamedPipeRpcServer(_In_ const std::wstring& pipeName, _In_ const std::string& sharedSecret,
                        _In_ std::size_t workerCount = 0);
 
@@ -51,27 +48,20 @@ class NamedPipeRpcServer {
     /// @param[in] functionName 客户端请求使用的函数名称。
     /// @param[in] permission 调用该函数需要的最低权限。
     /// @param[in] handler 请求处理回调。
-    /// @param functionName 传递给 RegisterFunction 的 functionName 参数。
-    /// @param permission 传递给 RegisterFunction 的 permission 参数。
-    /// @param handler 请求处理函数。
     void RegisterFunction(_In_ const std::string& functionName, _In_ PermissionLevel permission,
                           _In_ RpcHandler handler);
 
     /// @brief 添加允许访问管道的进程路径。
     /// @param[in] processPath 允许的可执行文件完整路径。
     /// @param[in] permission 为该进程授予的权限。
-    /// @param processPath 文件或目录路径。
-    /// @param permission 传递给 AddWhitelistProcess 的 permission 参数。
     void AddWhitelistProcess(_In_ const std::wstring& processPath, _In_ PermissionLevel permission);
 
     /// @brief 设置创建命名管道时使用的安全描述符。
     /// @param[in] sddl SDDL安全描述符字符串。
-    /// @param sddl 传递给 SetPipeSecuritySddl 的 sddl 参数。
     void SetPipeSecuritySddl(_In_ const std::wstring& sddl);
 
     /// @brief 设置非拥有的日志记录器。
     /// @param[in] logger 日志记录器指针，可以为空；调用方必须保证其生命周期覆盖服务端运行期。
-    /// @param logger 日志记录器；传空指针表示禁用。
     void SetLogger(_In_opt_ RpcLogger* logger);
 
   private:
@@ -85,33 +75,25 @@ class NamedPipeRpcServer {
     /// @brief 工作线程循环，接受并处理客户端请求。
     void WorkerLoop();
     /// @brief 构造客户端调用上下文。@param[in] pipe 管道句柄。@param[out] context 接收上下文。@return 成功返回true。
-    /// @param pipe 传递给 TryBuildClientContext 的 pipe 参数。
-    /// @param context 传递给 TryBuildClientContext 的 context 参数。
     bool TryBuildClientContext(_In_ HANDLE pipe, _Out_ RpcCallContext& context);
     /// @brief 检查进程路径是否位于白名单。@param[in] processPath 进程路径。@param[out] permission 接收权限。@return
     /// 匹配时返回true。
     /// @param processPath 文件或目录路径。
-    /// @param permission 传递给 CheckWhitelist 的 permission 参数。
     bool CheckWhitelist(_In_ const std::wstring& processPath, _Out_ PermissionLevel& permission) const;
     /// @brief 验证请求时间戳、Nonce和签名。@param[in] request 请求。@param[out] errorMessage 接收失败说明。@return
     /// 验证通过时返回true。
     /// @param request 请求对象。
-    /// @param errorMessage 传递给 ValidateRequest 的 errorMessage 参数。
     bool ValidateRequest(_In_ const RpcRequest& request, _Out_ std::string& errorMessage);
     /// @brief 查找并调用RPC处理函数。@param[in] context 客户端上下文。@param[in] request 请求。@return RPC执行结果。
-    /// @param context 传递给 ProcessRequest 的 context 参数。
     /// @param request 请求对象。
     RpcResult ProcessRequest(_In_ const RpcCallContext& context, _In_ const RpcRequest& request);
     /// @brief 删除已超过有效期的Nonce记录。
     void CleanupExpiredNonces();
     /// @brief 写入Info日志。@param[in] message 日志正文。
-    /// @param message 传递给 LogInfo 的 message 参数。
     void LogInfo(_In_ const std::wstring& message);
     /// @brief 写入Warn日志。@param[in] message 日志正文。
-    /// @param message 传递给 LogWarn 的 message 参数。
     void LogWarn(_In_ const std::wstring& message);
     /// @brief 写入Error日志。@param[in] message 日志正文。
-    /// @param message 传递给 LogError 的 message 参数。
     void LogError(_In_ const std::wstring& message);
 
     std::wstring pipeName_;
@@ -126,7 +108,8 @@ class NamedPipeRpcServer {
     std::unordered_map<std::string, std::int64_t> usedNonces_;
     std::mutex nonceMutex_;
     std::wstring pipeSecuritySddl_;
-    RpcLogger* logger_ = nullptr;
+    mutable std::mutex configurationMutex_;
+    std::atomic<RpcLogger*> logger_{nullptr};
     std::int64_t allowedTimeSkewSeconds_ = 30;
     std::int64_t nonceExpireSeconds_ = 60;
 };

@@ -1,5 +1,7 @@
 #include "client-server/RPC-named-pip/NamedPipeRpcClient.h"
 #include "client-server/RPC-named-pip/RpcSecurity.h"
+#include <chrono>
+#include <thread>
 #include <windows.h>
 
 namespace ytpp::client_server {
@@ -16,6 +18,11 @@ NamedPipeRpcClient::NamedPipeRpcClient(_In_ const std::wstring& pipeName, _In_ c
 }
 
 NamedPipeRpcClient::~NamedPipeRpcClient() {
+    {
+        std::unique_lock<std::mutex> lifetimeLock(lifetimeMutex_);
+        shuttingDown_ = true;
+        lifetimeCondition_.wait(lifetimeLock, [this] { return activeOperations_ == 0; });
+    }
     std::lock_guard<std::mutex> lock(poolMutex_);
     for (auto& c : pool_)
         Close(*c);
@@ -23,22 +30,34 @@ NamedPipeRpcClient::~NamedPipeRpcClient() {
 }
 
 void NamedPipeRpcClient::SetTimeout(_In_ DWORD timeoutMs) {
-    connectTimeoutMs_ = timeoutMs;
+    connectTimeoutMs_.store(timeoutMs);
 }
 
 bool NamedPipeRpcClient::Connect(_Inout_ Connection& conn, _Out_ std::string& errorMessage) {
     if (conn.pipe != INVALID_HANDLE_VALUE)
         return true;
 
-    if (!::WaitNamedPipeW(pipeName_.c_str(), connectTimeoutMs_)) {
-        DWORD err = ::GetLastError();
-        if (err == ERROR_FILE_NOT_FOUND)
-            errorMessage = "Server not running.";
-        else if (err == ERROR_SEM_TIMEOUT)
-            errorMessage = "Connect timeout.";
-        else
-            errorMessage = "WaitNamedPipe failed, error=" + std::to_string(err);
-        return false;
+    const DWORD timeoutMs = connectTimeoutMs_.load();
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+    for (;;) {
+        const auto now = std::chrono::steady_clock::now();
+        const auto remaining = now < deadline
+                                   ? static_cast<DWORD>(std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now).count())
+                                   : 0;
+        if (::WaitNamedPipeW(pipeName_.c_str(), remaining))
+            break;
+
+        const DWORD error = ::GetLastError();
+        if (error != ERROR_FILE_NOT_FOUND && error != ERROR_SEM_TIMEOUT) {
+            errorMessage = "WaitNamedPipe failed, error=" + std::to_string(error);
+            return false;
+        }
+        if (remaining == 0) {
+            errorMessage = error == ERROR_FILE_NOT_FOUND ? "Server not running." : "Connect timeout.";
+            return false;
+        }
+        if (error == ERROR_FILE_NOT_FOUND)
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     conn.pipe = ::CreateFileW(pipeName_.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
@@ -83,7 +102,7 @@ std::shared_ptr<NamedPipeRpcClient::Connection> NamedPipeRpcClient::AcquireConne
             return conn;
         }
 
-        if (poolCondition_.wait_for(lock, std::chrono::milliseconds(connectTimeoutMs_)) == std::cv_status::timeout) {
+        if (poolCondition_.wait_for(lock, std::chrono::milliseconds(connectTimeoutMs_.load())) == std::cv_status::timeout) {
             errorMessage = "Acquire connection from pool timeout.";
             return nullptr;
         }
@@ -125,16 +144,22 @@ bool NamedPipeRpcClient::SendAndReceive(_Inout_ Connection& conn, _In_ const std
         return false;
     }
 
-    if (!result.success) {
-        errorMessage = result.errorMessage;
-        return false;
-    }
-
     return true;
 }
 
 bool NamedPipeRpcClient::Call(_In_ const std::string& functionName, _In_ const RpcArray& args, _Out_ RpcResult& result,
                               _Out_ std::string& errorMessage) {
+    if (!BeginOperation()) {
+        errorMessage = "RPC client is shutting down.";
+        return false;
+    }
+    auto operationGuard = std::unique_ptr<void, std::function<void(void*)>>(reinterpret_cast<void*>(1),
+                                                                            [this](void*) { EndOperation(); });
+    return CallCore(functionName, args, result, errorMessage);
+}
+
+bool NamedPipeRpcClient::CallCore(_In_ const std::string& functionName, _In_ const RpcArray& args,
+                                  _Out_ RpcResult& result, _Out_ std::string& errorMessage) {
     result = RpcResult{};
     errorMessage.clear();
 
@@ -148,29 +173,41 @@ bool NamedPipeRpcClient::Call(_In_ const std::string& functionName, _In_ const R
     if (!Connect(*conn, errorMessage))
         return false;
 
-    if (SendAndReceive(*conn, functionName, args, result, errorMessage))
-        return true;
-
-    DWORD lastErr = ::GetLastError();
-    if (lastErr == ERROR_BROKEN_PIPE || lastErr == ERROR_NO_DATA) {
+    const bool completed = SendAndReceive(*conn, functionName, args, result, errorMessage);
+    if (!completed)
         Close(*conn);
-        if (!Connect(*conn, errorMessage))
-            return false;
-
-        result = RpcResult{};
-        errorMessage.clear();
-        return SendAndReceive(*conn, functionName, args, result, errorMessage);
-    }
-
-    return false;
+    return completed;
 }
 
 std::future<RpcAsyncResult> NamedPipeRpcClient::CallAsync(_In_ const std::string& functionName,
                                                           _In_ const RpcArray& args) {
-    return std::async(std::launch::async, [this, functionName, args]() -> RpcAsyncResult {
-        RpcAsyncResult ret;
-        ret.ok = Call(functionName, args, ret.result, ret.errorMessage);
-        return ret;
-    });
+    if (!BeginOperation())
+        throw std::runtime_error("RPC client is shutting down");
+    try {
+        return std::async(std::launch::async, [this, functionName, args]() -> RpcAsyncResult {
+            auto operationGuard = std::unique_ptr<void, std::function<void(void*)>>(reinterpret_cast<void*>(1),
+                                                                                    [this](void*) { EndOperation(); });
+            RpcAsyncResult result;
+            result.ok = CallCore(functionName, args, result.result, result.errorMessage);
+            return result;
+        });
+    } catch (...) {
+        EndOperation();
+        throw;
+    }
+}
+
+bool NamedPipeRpcClient::BeginOperation() {
+    std::lock_guard<std::mutex> lock(lifetimeMutex_);
+    if (shuttingDown_)
+        return false;
+    ++activeOperations_;
+    return true;
+}
+
+void NamedPipeRpcClient::EndOperation() {
+    std::lock_guard<std::mutex> lock(lifetimeMutex_);
+    if (--activeOperations_ == 0)
+        lifetimeCondition_.notify_all();
 }
 } // namespace ytpp::client_server

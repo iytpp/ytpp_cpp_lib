@@ -15,7 +15,6 @@ struct UserInfo {
 /// @brief 将UserInfo转换为可传输的RPC对象。
 /// @param[in] user 要转换的用户信息。
 /// @return 包含全部UserInfo字段的RpcValue对象。
-/// @param user 控制对应功能是否启用。
 inline RpcValue ToRpcValue(_In_ const UserInfo& user) {
     RpcObject obj;
     /// @brief 调用 RpcValue 完成对应操作。
@@ -33,7 +32,6 @@ inline RpcValue ToRpcValue(_In_ const UserInfo& user) {
 /// @param[in] value 包含UserInfo字段的RpcValue对象。
 /// @return 解析后的UserInfo。
 /// @throws std::runtime_error 输入不是RPC对象时抛出。
-/// @param value 要读取、写入或处理的值。
 inline UserInfo ToUserInfo(_In_ const RpcValue& value) {
     if (!value.IsObject())
         throw std::runtime_error("UserInfo must be RpcObject.");

@@ -1,10 +1,36 @@
 @PACKAGE_INIT@
 
 include(CMakeFindDependencyMacro)
-find_dependency(CURL)
-find_dependency(jsoncpp CONFIG)
-find_dependency(OpenSSL)
+set(_ytpp_supported_components client_server curl_ex jsoncpp_ex sys_core all)
+
+if(NOT ytpp_cpp_lib_FIND_COMPONENTS)
+    set(ytpp_cpp_lib_FIND_COMPONENTS ${_ytpp_supported_components})
+endif()
+
+foreach(component IN LISTS ytpp_cpp_lib_FIND_COMPONENTS)
+    if(NOT component IN_LIST _ytpp_supported_components)
+        set(ytpp_cpp_lib_FOUND FALSE)
+        set(ytpp_cpp_lib_NOT_FOUND_MESSAGE "Unsupported ytpp_cpp_lib component: ${component}")
+        return()
+    endif()
+endforeach()
+
+if("curl_ex" IN_LIST ytpp_cpp_lib_FIND_COMPONENTS OR "all" IN_LIST ytpp_cpp_lib_FIND_COMPONENTS)
+    find_dependency(CURL)
+endif()
+if("jsoncpp_ex" IN_LIST ytpp_cpp_lib_FIND_COMPONENTS OR "all" IN_LIST ytpp_cpp_lib_FIND_COMPONENTS)
+    find_dependency(jsoncpp CONFIG)
+endif()
+if("sys_core" IN_LIST ytpp_cpp_lib_FIND_COMPONENTS OR "all" IN_LIST ytpp_cpp_lib_FIND_COMPONENTS)
+    find_dependency(OpenSSL)
+endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/ytpp_cpp_lib-targets.cmake")
+
+foreach(component IN LISTS ytpp_cpp_lib_FIND_COMPONENTS)
+    if(TARGET ytpp::${component})
+        set(ytpp_cpp_lib_${component}_FOUND TRUE)
+    endif()
+endforeach()
 
 check_required_components(ytpp_cpp_lib)
