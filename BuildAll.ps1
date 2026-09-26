@@ -1,11 +1,11 @@
-param(
+ï»¿param(
     [switch]$Clean
 )
 
 $ErrorActionPreference = "Stop"
 
 # ============================================================
-# ÏîÄ¿ÅäÖÃ
+# é¡¹ç›®é…ç½®
 # ============================================================
 
 $ProjectRoot = $PSScriptRoot
@@ -37,7 +37,7 @@ $BuildConfigs = @(
 
 
 # ============================================================
-# ¹¤¾ßº¯Êı
+# å·¥å…·å‡½æ•°
 # ============================================================
 
 function Write-Title {
@@ -59,13 +59,13 @@ function Stop-WithError {
 
     Write-Host ""
     Write-Host "============================================================" -ForegroundColor Red
-    Write-Host " ¹¹½¨Ê§°Ü" -ForegroundColor Red
+    Write-Host " æ„å»ºå¤±è´¥" -ForegroundColor Red
     Write-Host "============================================================" -ForegroundColor Red
     Write-Host ""
     Write-Host $Message -ForegroundColor Red
     Write-Host ""
 
-    Read-Host "°´ Enter ¼ü¹Ø±Õ´°¿Ú"
+    Read-Host "æŒ‰ Enter é”®å…³é—­çª—å£"
     exit 1
 }
 
@@ -76,16 +76,22 @@ function Invoke-MsvcCommand {
         [string]$Command
     )
 
-    $fullCommand = "call `"$VcVarsAll`" $Arch >nul && $Command"
+    # åœ¨åˆå§‹åŒ– MSVC ç¯å¢ƒä¹‹å‰ç»Ÿä¸€æ§åˆ¶å°ç¼–ç å’Œå·¥å…·é“¾è¯­è¨€ï¼Œç¡®ä¿ CMake ä¸ Ninja
+    # ä½¿ç”¨ç›¸åŒç¼–ç è¯†åˆ« /showIncludes è¾“å‡ºï¼Œé¿å…æ‰“å°æµ·é‡å¤´æ–‡ä»¶ä¾èµ–ä¿¡æ¯ã€‚
+    $fullCommand = "chcp 65001 >nul && set `"VSLANG=1033`" && call `"$VcVarsAll`" $Arch >nul && $Command"
 
     $process = Start-Process `
         -FilePath "cmd.exe" `
         -ArgumentList "/d", "/s", "/c", "`"$fullCommand`"" `
         -NoNewWindow `
-        -Wait `
         -PassThru
 
-    return [int]$process.ExitCode
+    # Start-Process -Wait å¯èƒ½ç»§ç»­ç­‰å¾… MSVC/vcpkg æ´¾ç”Ÿå‡ºçš„é©»ç•™æœåŠ¡è¿›ç¨‹ã€‚
+    # WaitForExit() åªç­‰å¾…æœ¬æ¬¡ç›´æ¥å¯åŠ¨çš„ cmd.exeï¼Œå‘½ä»¤ç»“æŸåå³å¯ç»§ç»­ä¸‹ä¸€é˜¶æ®µã€‚
+    $process.WaitForExit()
+    $exitCode = [int]$process.ExitCode
+    $process.Dispose()
+    return $exitCode
 }
 
 
@@ -111,21 +117,23 @@ function Build-Configuration {
     # Configure
     # ========================================================
 
-    Write-Host "[$Index/$Total] ÕıÔÚÅäÖÃ $name ..." -ForegroundColor Cyan
+    Write-Host "[$Index/$Total] æ­£åœ¨é…ç½® $name ..." -ForegroundColor Cyan
     Write-Host ""
 
-    $configureCommand = "cmake --preset `"$preset`""
+    # å§‹ç»ˆé‡æ–°æ¢æµ‹ç¼–è¯‘å™¨è¾“å‡ºç¼–ç ï¼Œé˜²æ­¢æ—§ç¼“å­˜ä¸­çš„ /showIncludes å‰ç¼€ä¸å½“å‰ä»£ç é¡µä¸ä¸€è‡´ã€‚
+    # --fresh åªé‡å»º CMake é…ç½®ç¼“å­˜ï¼Œä¸åˆ é™¤å·²ç»ç”Ÿæˆçš„å¯¹è±¡æ–‡ä»¶å’Œå®‰è£…ç›®å½•ã€‚
+    $configureCommand = "cmake --preset `"$preset`" --fresh"
 
     $exitCode = Invoke-MsvcCommand `
         -Arch $arch `
         -Command $configureCommand
 
     if ($exitCode -ne 0) {
-        Stop-WithError "$name ÅäÖÃÊ§°Ü£¬ÍË³ö´úÂë£º$exitCode"
+        Stop-WithError "$name é…ç½®å¤±è´¥ï¼Œé€€å‡ºä»£ç ï¼š$exitCode"
     }
 
     Write-Host ""
-    Write-Host "[$Index/$Total] $name ÅäÖÃÍê³É¡£" -ForegroundColor Green
+    Write-Host "[$Index/$Total] $name é…ç½®å®Œæˆã€‚" -ForegroundColor Green
     Write-Host ""
 
 
@@ -133,7 +141,7 @@ function Build-Configuration {
     # Build
     # ========================================================
 
-    Write-Host "[$Index/$Total] ÕıÔÚ¹¹½¨ $name ..." -ForegroundColor Cyan
+    Write-Host "[$Index/$Total] æ­£åœ¨æ„å»º $name ..." -ForegroundColor Cyan
     Write-Host ""
 
     $buildCommand = "cmake --build --preset `"$preset`""
@@ -147,11 +155,11 @@ function Build-Configuration {
         -Command $buildCommand
 
     if ($exitCode -ne 0) {
-        Stop-WithError "$name ¹¹½¨Ê§°Ü£¬ÍË³ö´úÂë£º$exitCode"
+        Stop-WithError "$name æ„å»ºå¤±è´¥ï¼Œé€€å‡ºä»£ç ï¼š$exitCode"
     }
 
     Write-Host ""
-    Write-Host "[$Index/$Total] $name ¹¹½¨Íê³É¡£" -ForegroundColor Green
+    Write-Host "[$Index/$Total] $name æ„å»ºå®Œæˆã€‚" -ForegroundColor Green
     Write-Host ""
 
 
@@ -159,7 +167,7 @@ function Build-Configuration {
     # Install
     # ========================================================
 
-    Write-Host "[$Index/$Total] ÕıÔÚ°²×° $name ..." -ForegroundColor Cyan
+    Write-Host "[$Index/$Total] æ­£åœ¨å®‰è£… $name ..." -ForegroundColor Cyan
     Write-Host ""
 
     $installCommand = "cmake --build --preset `"$preset`" --target install"
@@ -169,88 +177,88 @@ function Build-Configuration {
         -Command $installCommand
 
     if ($exitCode -ne 0) {
-        Stop-WithError "$name °²×°Ê§°Ü£¬ÍË³ö´úÂë£º$exitCode"
+        Stop-WithError "$name å®‰è£…å¤±è´¥ï¼Œé€€å‡ºä»£ç ï¼š$exitCode"
     }
 
     Write-Host ""
-    Write-Host "[$Index/$Total] $name °²×°Íê³É¡£" -ForegroundColor Green
+    Write-Host "[$Index/$Total] $name å®‰è£…å®Œæˆã€‚" -ForegroundColor Green
     Write-Host ""
 }
 
 
 # ============================================================
-# Ö÷³ÌĞò
+# ä¸»ç¨‹åº
 # ============================================================
 
 Clear-Host
 
 Write-Title "ytpp_cpp_lib - Build All"
 
-Write-Host "ÏîÄ¿Ä¿Â¼£º$ProjectRoot"
-Write-Host "MSVC»·¾³ £º$VcVarsAll"
-Write-Host "ÅäÖÃÊıÁ¿£º$($BuildConfigs.Count)"
+Write-Host "é¡¹ç›®ç›®å½•ï¼š$ProjectRoot"
+Write-Host "MSVCç¯å¢ƒ ï¼š$VcVarsAll"
+Write-Host "é…ç½®æ•°é‡ï¼š$($BuildConfigs.Count)"
 Write-Host ""
 
 if ($Clean) {
-    Write-Host "Clean First£ºON" -ForegroundColor Yellow
+    Write-Host "Clean Firstï¼šON" -ForegroundColor Yellow
 }
 else {
-    Write-Host "Clean First£ºOFF"
+    Write-Host "Clean Firstï¼šOFF"
 }
 
-Write-Host "Install    £ºON" -ForegroundColor Yellow
+Write-Host "Install    ï¼šON" -ForegroundColor Yellow
 Write-Host ""
 
 
 # ============================================================
-# »ù´¡¼ì²é
+# åŸºç¡€æ£€æŸ¥
 # ============================================================
 
 if (-not (Test-Path $ProjectRoot)) {
-    Stop-WithError "ÏîÄ¿Ä¿Â¼²»´æÔÚ£º$ProjectRoot"
+    Stop-WithError "é¡¹ç›®ç›®å½•ä¸å­˜åœ¨ï¼š$ProjectRoot"
 }
 
 if (-not (Test-Path $VcVarsAll)) {
-    Stop-WithError "ÕÒ²»µ½ vcvarsall.bat£º$VcVarsAll"
+    Stop-WithError "æ‰¾ä¸åˆ° vcvarsall.batï¼š$VcVarsAll"
 }
 
 if (-not (Test-Path (Join-Path $ProjectRoot "CMakeLists.txt"))) {
-    Stop-WithError "ÕÒ²»µ½ CMakeLists.txt£º$ProjectRoot"
+    Stop-WithError "æ‰¾ä¸åˆ° CMakeLists.txtï¼š$ProjectRoot"
 }
 
 if (-not (Test-Path (Join-Path $ProjectRoot "CMakePresets.json"))) {
-    Stop-WithError "ÕÒ²»µ½ CMakePresets.json£º$ProjectRoot"
+    Stop-WithError "æ‰¾ä¸åˆ° CMakePresets.jsonï¼š$ProjectRoot"
 }
 
 if (-not (Test-Path (Join-Path $ProjectRoot "CMakeUserPresets.json"))) {
-    Stop-WithError "ÕÒ²»µ½ CMakeUserPresets.json£º$ProjectRoot"
+    Stop-WithError "æ‰¾ä¸åˆ° CMakeUserPresets.jsonï¼š$ProjectRoot"
 }
 
 
 # ============================================================
-# ÇĞ»»µ½ÏîÄ¿Ä¿Â¼
+# åˆ‡æ¢åˆ°é¡¹ç›®ç›®å½•
 # ============================================================
 
 Set-Location $ProjectRoot
 
 
 # ============================================================
-# ¼ì²é cmake
+# æ£€æŸ¥ cmake
 # ============================================================
 
 try {
     $cmakeCommand = Get-Command cmake -ErrorAction Stop
 }
 catch {
-    Stop-WithError "ÕÒ²»µ½ cmake.exe£¬ÇëÈ·ÈÏ CMake ÒÑ¼ÓÈë PATH¡£"
+    Stop-WithError "æ‰¾ä¸åˆ° cmake.exeï¼Œè¯·ç¡®è®¤ CMake å·²åŠ å…¥ PATHã€‚"
 }
 
-Write-Host "CMake     £º$($cmakeCommand.Source)"
+Write-Host "CMake     ï¼š$($cmakeCommand.Source)"
 Write-Host ""
 
 
 # ============================================================
-# ¿ªÊ¼¹¹½¨
+# å¼€å§‹æ„å»º
 # ============================================================
 
 $startTime = Get-Date
@@ -265,15 +273,15 @@ for ($i = 0; $i -lt $total; $i++) {
 
 
 # ============================================================
-# Íê³É
+# å®Œæˆ
 # ============================================================
 
 $endTime = Get-Date
 $elapsed = $endTime - $startTime
 
-Write-Title "È«²¿¹¹½¨²¢°²×°³É¹¦"
+Write-Title "å…¨éƒ¨æ„å»ºå¹¶å®‰è£…æˆåŠŸ"
 
-Write-Host "ÒÑ³É¹¦Íê³ÉÒÔÏÂÅäÖÃ£º" -ForegroundColor Green
+Write-Host "å·²æˆåŠŸå®Œæˆä»¥ä¸‹é…ç½®ï¼š" -ForegroundColor Green
 Write-Host ""
 
 foreach ($config in $BuildConfigs) {
@@ -281,18 +289,18 @@ foreach ($config in $BuildConfigs) {
 }
 
 Write-Host ""
-Write-Host ("×ÜºÄÊ±£º{0:hh\:mm\:ss}" -f $elapsed)
+Write-Host ("æ€»è€—æ—¶ï¼š{0:hh\:mm\:ss}" -f $elapsed)
 Write-Host ""
 
 if ($Clean) {
-    Write-Host "Ö´ĞĞÄ£Ê½£ºConfigure + Clean Build + Install" -ForegroundColor Green
+    Write-Host "æ‰§è¡Œæ¨¡å¼ï¼šConfigure + Clean Build + Install" -ForegroundColor Green
 }
 else {
-    Write-Host "Ö´ĞĞÄ£Ê½£ºConfigure + Build + Install" -ForegroundColor Green
+    Write-Host "æ‰§è¡Œæ¨¡å¼ï¼šConfigure + Build + Install" -ForegroundColor Green
 }
 
 Write-Host ""
-Write-Host "È«²¿ÈÎÎñÒÑ³É¹¦Íê³É¡£" -ForegroundColor Green
+Write-Host "å…¨éƒ¨ä»»åŠ¡å·²æˆåŠŸå®Œæˆã€‚" -ForegroundColor Green
 Write-Host ""
 
-Read-Host "°´ Enter ¼ü¹Ø±Õ´°¿Ú"
+Read-Host "æŒ‰ Enter é”®å…³é—­çª—å£"
